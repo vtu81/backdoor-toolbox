@@ -1,0 +1,10 @@
+[deps]
+Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
+Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
+LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
+NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+SliceMap = "82cb661a-3f19-5665-9e27-df437c7e54c8"
+TensorToolbox = "9c690861-8ade-587a-897e-15364bc6f718"
