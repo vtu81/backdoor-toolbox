@@ -2,6 +2,9 @@
 
 **A compact toolbox for backdoor attacks and defenses.**
 
+## Features
+
+> You may register your own attacks, defenses and visualization methods in the corresponding files and directories.
 
 ### Attacks
 
@@ -10,22 +13,26 @@
 See [poison_tool_box/](poison_tool_box/) and [create_poisoned_set.py](create_poisoned_set.py).
 
 **Clean**
+
 - `none`: no attack
 
 **Adaptive**
+
+https://arxiv.org/abs/2205.13613
 - `adaptive`: adaptive attack with a single general trigger
 - `adaptive_blend`: adaptive attack with a single blending trigger
 - `adaptive_k`: adaptive attack with `k` different triggers
 - `adaptive_k_way`: adaptive attack with `k` pixel triggers
 
 **Others**
+
 - `basic`: basic attack with a general trigger (patch, blend, etc.)
-- `badnet`: basic attack with badnet patch trigger
-- `blend`: basic attack with a single blending trigger
-- `dynamic`
-- `clean_label`
-- `SIG`
-- `TaCT`: source specific attack
+- `badnet`: basic attack with badnet patch trigger, http://arxiv.org/abs/1708.06733
+- `blend`: basic attack with a single blending trigger, https://arxiv.org/abs/1712.05526
+- `dynamic`: http://arxiv.org/abs/2010.08138
+- `clean_label`: http://arxiv.org/abs/1912.02771
+- `SIG`: https://arxiv.org/abs/1902.11237
+- `TaCT`: source specific attack, https://arxiv.org/abs/1908.00686
 
 ### Defenses
 
@@ -33,22 +40,22 @@ See [poison_tool_box/](poison_tool_box/) and [create_poisoned_set.py](create_poi
 
 See [cleansers_tool_box/](cleansers_tool_box/) and [cleanser.py](cleanser.py).
 
-- `CT`: confusion training
-- `SCAn`
-- `AC`: activation clustering
-- `SS`: spectral signature
-- `SPECTRE` 
-- `Strip` (modified as a poison cleanser)
+- `CT`: confusion training, https://arxiv.org/abs/2205.13616
+- `SCAn`: https://arxiv.org/abs/1908.00686
+- `AC`: activation clustering, https://arxiv.org/abs/1811.03728
+- `SS`: spectral signature, https://arxiv.org/abs/1811.00636
+- `SPECTRE`: https://arxiv.org/abs/2104.11315
+- `Strip` (modified as a poison cleanser): http://arxiv.org/abs/1902.06531
 
 **Other Defenses**
 
 See [other_defenses_tool_box/](other_defenses_tool_box/) and [other_defense.py](other_defense.py).
 
-- `NC`: Neural Clenase
-- `STRIP` (backdoor input filter)
-- `FP`: FinePruning
-- `ABL`: Anti-Backdoor Learning
-- `NAD`: Neural Attention Distillation
+- `NC`: Neural Clenase, https://ieeexplore.ieee.org/document/8835365/
+- `STRIP` (backdoor input filter): http://arxiv.org/abs/1902.06531
+- `FP`: Fine-Pruning, http://arxiv.org/abs/1805.12185
+- `ABL`: Anti-Backdoor Learning, https://arxiv.org/abs/2110.11571
+- `NAD`: Neural Attention Distillation, https://arxiv.org/abs/2101.05930
 
 ### Visualization
 
@@ -56,7 +63,7 @@ Visualize the latent space of backdoor models. See [visualize.py](visualize.py).
 
 - `tsne`: 2-dimensional T-SNE
 - `pca`: 2-dimensional PCA
-- `oracle`: fit the poison latent space with a SVM
+- `oracle`: fit the poison latent space with a SVM, see https://arxiv.org/abs/2205.13613
 
 ## Quick Start
 
@@ -96,7 +103,7 @@ python other_defense.py -defense=$DEFENSE -dataset=cifar10 -poison_type=adaptive
 - For `clean_label` attack, run [data/cifar10/clean_label/setup.sh](data/cifar10/clean_label/setup.sh) before the first time launching it.
 - For `dynamic` attack, download pretrained generators `all2one_cifar10_ckpt.pth.tar` and `all2one_gtsrb_ckpt.pth.tar` to `[models/](models/) from https://github.com/VinAIResearch/input-aware-backdoor-attack-release before the first time launching it.
 
-Some examples for creating other backdoor poison set:
+Some examples for creating other backdoor poison setsß:
 ```bash
 # No Poison
 python create_poisoned_set.py -dataset=cifar10 -poison_type=none -poison_rate=0
