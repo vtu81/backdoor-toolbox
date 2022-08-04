@@ -51,8 +51,17 @@ elif args.dataset == 'cifar100':
     print('<To Be Implemented> Dataset = %s' % args.dataset)
     exit(0)
 elif args.dataset == 'imagenette':
-    print('<To Be Implemented> Dataset = %s' % args.dataset)
-    exit(0)
+    data_transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+    ])
+    if not os.path.exists(os.path.join(os.path.join(data_dir, 'imagenette2'), 'val')):
+        print("Please download full size Imagenette dataset from https://s3.amazonaws.com/fast-ai-imageclas/imagenette2.tgz and extract it under ./data/")
+    clean_set = datasets.ImageFolder(os.path.join(os.path.join(data_dir, 'imagenette2'), 'val'), data_transform)
+    
+    img_size = 224
+    num_classes = 10
 else:
     print('<Undefined> Dataset = %s' % args.dataset)
     exit(0)

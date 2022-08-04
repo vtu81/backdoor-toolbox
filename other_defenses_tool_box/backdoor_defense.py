@@ -82,8 +82,43 @@ class BackdoorDefense():
             print('<To Be Implemented> Dataset = %s' % args.dataset)
             exit(0)
         elif args.dataset == 'imagenette':
-            print('<To Be Implemented> Dataset = %s' % args.dataset)
-            exit(0)
+            if args.no_normalize:
+                self.data_transform_aug = transforms.Compose([
+                        transforms.RandomCrop(224, 4),
+                        transforms.RandomHorizontalFlip(),    
+                        transforms.ColorJitter(brightness=0.4, contrast=0.4,saturation=0.4),
+                        transforms.ToTensor(),
+                ])
+                self.data_transform = transforms.Compose([
+                    transforms.ToTensor(),
+                ])
+                self.normalizer = transforms.Compose([])
+                self.denormalizer = transforms.Compose([])
+            else:
+                self.data_transform_aug = transforms.Compose([
+                        transforms.RandomCrop(224, 4),
+                        transforms.RandomHorizontalFlip(),    
+                        transforms.ColorJitter(brightness=0.4, contrast=0.4,saturation=0.4),
+                        transforms.ToTensor(),
+                        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                ])
+                self.data_transform = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                ])
+                self.normalizer = transforms.Compose([
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                ])
+                self.denormalizer = transforms.Compose([
+                    transforms.Normalize([-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225], [1 / 0.229, 1 / 0.224, 1 / 0.225])
+                ])            
+            self.img_size = 224
+            self.num_classes = 10
+            self.input_channel = 3
+            self.shape = torch.Size([3, 224, 224])
+            self.momentum = 0.9
+            self.weight_decay = 1e-4
+            self.learning_rate = 0.1
         else:
             print('<Undefined> Dataset = %s' % args.dataset)
             exit(0)

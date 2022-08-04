@@ -8,6 +8,7 @@ data/cifar10/*
 !data/cifar10/.dummy
 data/gtsrb/*
 !data/gtsrb/.dummy
+data/imagenette2/*
 
 models/*
 !models/.dummy
@@ -19,6 +20,8 @@ clean_set/cifar10/*
 !clean_set/cifar10/.dummy
 clean_set/gtsrb/*
 !clean_set/gtsrb/.dummy
+clean_set/imagenette/*
+!clean_set/imagenette/.dummy
 
 logs/*
 !logs/.dummy

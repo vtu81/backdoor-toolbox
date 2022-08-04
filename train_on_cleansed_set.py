@@ -106,6 +106,33 @@ elif args.dataset == 'gtsrb':
     milestones = torch.tensor([40, 80])
     learning_rate = 0.1
 
+elif args.dataset == 'imagenette':
+    num_classes = 10
+
+    data_transform_aug = transforms.Compose([
+        transforms.RandomCrop(224, 4),
+        transforms.RandomHorizontalFlip(),    
+        transforms.ColorJitter(brightness=0.4, contrast=0.4,saturation=0.4),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    data_transform_no_aug = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    trigger_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    momentum = 0.9
+    weight_decay = 1e-4
+    epochs = 100
+    milestones = torch.tensor([40, 80])
+    learning_rate = 0.1
+
 else:
     raise Exception("Invalid Dataset")
 

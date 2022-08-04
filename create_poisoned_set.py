@@ -110,7 +110,18 @@ else:
     elif args.dataset == 'cifar100':
         raise NotImplementedError('cifar100 unsupported!')
     elif args.dataset == 'imagenette':
-        raise  NotImplementedError('imagenette unsupported!')
+        data_transform = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+        ])
+        train_set = datasets.ImageFolder(os.path.join(os.path.join(data_dir, 'imagenette2'), 'train'), data_transform)
+
+        img_size = 224
+        num_classes = 10
+        trigger_transform = transforms.Compose([
+            transforms.ToTensor()
+        ])
     else:
         raise  NotImplementedError('Undefined Dataset')
 

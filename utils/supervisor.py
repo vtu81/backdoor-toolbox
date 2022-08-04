@@ -127,6 +127,14 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
             transforms.Normalize((-0.3337 / 0.2672, -0.3064 / 0.2564, -0.3171 / 0.2629),
                                     (1.0 / 0.2672, 1.0 / 0.2564, 1.0 / 0.2629)),
         ])
+    elif dataset_name == 'imagenette':
+        normalizer = transforms.Compose([
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        denormalizer = transforms.Compose([
+            transforms.Normalize([-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
+                                    [1 / 0.229, 1 / 0.224, 1 / 0.225])
+        ])
     else:
         raise Exception("Invalid Dataset")
 

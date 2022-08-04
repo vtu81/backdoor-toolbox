@@ -10,7 +10,8 @@ data_dir = './data' # defaul clean dataset directory
 triggers_dir = './triggers' # default triggers directory
 target_class = {
     'cifar10' : 0,
-    'gtsrb' : 2
+    'gtsrb' : 2,
+    'imagenette': 0,
 }
 
 # default target class (without loss of generality)
@@ -22,7 +23,7 @@ record_poison_seed = False
 record_model_arch = False
 
 parser_choices = {
-    'dataset': ['gtsrb','cifar10', 'cifar100', 'imagenette'],
+    'dataset': ['gtsrb', 'cifar10', 'cifar100', 'imagenette'],
     'poison_type': ['basic', 'badnet', 'blend', 'dynamic', 'clean_label', 'TaCT', 'SIG',
                     'adaptive', 'adaptive_blend', 'adaptive_k_way', 'adaptive_k',
                     'none'],
@@ -55,10 +56,11 @@ trigger_default = {
 
 arch = {
     ### for base model & poison distillation
-     'cifar10': resnet.resnet20,
+    'cifar10': resnet.resnet20,
     # 'cifar10': vgg.vgg16_bn,
     # 'cifar10': mobilenetv2.mobilenetv2,
     'gtsrb' : resnet.resnet20,
+    'imagenette': resnet.resnet20,
     ### for constructing defense model
     'low_dim' : resnet.resnet20_low_dim,
     'abl':  wresnet.WideResNet

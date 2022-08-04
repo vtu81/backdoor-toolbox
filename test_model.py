@@ -73,6 +73,21 @@ elif args.dataset == 'gtsrb':
         transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
     ])
 
+elif args.dataset == 'imagenette':
+
+    data_transform_aug = transforms.Compose([
+        transforms.RandomCrop(224, 4),
+        transforms.RandomHorizontalFlip(),    
+        transforms.ColorJitter(brightness=0.4, contrast=0.4,saturation=0.4),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    data_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
 else:
 
     raise NotImplementedError('dataset %s not supported' % args.dataset)
@@ -101,7 +116,12 @@ elif args.dataset == 'gtsrb':
 
 elif args.dataset == 'imagenette':
     num_classes = 10
-    raise NotImplementedError('<To Be Implemented> Dataset = %s' % args.dataset)
+    arch = config.arch[args.dataset]
+    momentum = 0.9
+    weight_decay = 1e-4
+    epochs = 100
+    milestones = torch.tensor([40, 80])
+    learning_rate = 0.1
 else:
     print('<Undefined Dataset> Dataset = %s' % args.dataset)
     raise NotImplementedError('<To Be Implemented> Dataset = %s' % args.dataset)

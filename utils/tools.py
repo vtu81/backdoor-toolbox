@@ -168,6 +168,17 @@ def unpack_poisoned_train_set(args, batch_size=128, shuffle=False, data_transfor
                     transforms.ToTensor(),
                     transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
                 ])
+    elif args.dataset == 'imagenette':
+        if data_transform is None:
+            if args.no_normalize:
+                data_transform = transforms.Compose([
+                    transforms.ToTensor(),
+                ])
+            else:
+                data_transform = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                ])
     else: raise NotImplementedError()
 
     poison_set_dir = supervisor.get_poison_set_dir(args)
