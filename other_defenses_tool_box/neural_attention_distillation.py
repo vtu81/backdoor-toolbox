@@ -310,7 +310,7 @@ class NAD(BackdoorDefense):
             loss.backward()
             optimizer.step()
 
-        print('\nEpoch[{0}]: '
+        print('Epoch[{0}]: '
             'loss: {losses.avg:.4f}  '
             'prec@1: {top1.avg:.2f}  '
             'prec@5: {top5.avg:.2f}'.format(epoch, losses=losses, top1=top1, top5=top5))

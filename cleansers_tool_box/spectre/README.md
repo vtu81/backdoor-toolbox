@@ -13,5 +13,5 @@ julia --project=. -e "using Pkg; Pkg.instantiate()"
 To launch SPECTRE defense, simply run our drive code:
 ```bash
 # Run under repository root
-python other_cleanser.py -dataset=cifar10 -poison_type=badnet -poison_rate=0.01 -cleanser=SPECTRE
+python cleanser.py -dataset=cifar10 -poison_type=badnet -poison_rate=0.01 -cleanser=SPECTRE
 ```

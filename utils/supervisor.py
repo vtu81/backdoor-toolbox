@@ -53,11 +53,11 @@ def get_dir_core(args, include_model_name=False, include_poison_seed=False):
     if args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
         blend_alpha = '%.3f' % args.alpha
         dir_core = '%s_%s_%s_alpha=%s_trigger=%s' % (args.dataset, args.poison_type, ratio, blend_alpha, args.trigger)
-    elif args.poison_type == 'adaptive' or args.poison_type == 'adaptive_blend' or args.poison_type == 'TaCT':
+    elif args.poison_type == 'adaptive' or args.poison_type == 'adaptive_blend' or args.poison_type == 'adaptive_mask' or args.poison_type == 'TaCT':
         blend_alpha = '%.3f' % args.alpha
         cover_rate = '%.3f' % args.cover_rate
         dir_core = '%s_%s_%s_alpha=%s_cover=%s_trigger=%s' % (args.dataset, args.poison_type, ratio, blend_alpha, cover_rate, args.trigger)
-    elif args.poison_type == 'adaptive_k_way' or args.poison_type == 'adaptive_k':
+    elif args.poison_type == 'adaptive_k_way' or args.poison_type == 'adaptive_k' or args.poison_type == 'WaNet':
         cover_rate = '%.3f' % args.cover_rate
         dir_core = '%s_%s_%s_cover=%s' % (args.dataset, args.poison_type, ratio, cover_rate)
     elif args.poison_type == 'adaptive_patch' or args.poison_type == 'adaptive_physical':
@@ -79,11 +79,11 @@ def get_poison_set_dir(args):
     if args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
         blend_alpha = '%.3f' % args.alpha
         poison_set_dir = 'poisoned_train_set/%s/%s_%s_alpha=%s_trigger=%s' % (args.dataset, args.poison_type, ratio, blend_alpha, args.trigger)
-    elif args.poison_type == 'adaptive' or args.poison_type == 'adaptive_blend' or args.poison_type == 'TaCT':
+    elif args.poison_type == 'adaptive' or args.poison_type == 'adaptive_blend' or args.poison_type == 'adaptive_mask' or args.poison_type == 'TaCT':
         blend_alpha = '%.3f' % args.alpha
         cover_rate = '%.3f' % args.cover_rate
         poison_set_dir = 'poisoned_train_set/%s/%s_%s_alpha=%s_cover=%s_trigger=%s' % (args.dataset, args.poison_type, ratio, blend_alpha, cover_rate, args.trigger)
-    elif args.poison_type == 'adaptive_k_way' or args.poison_type == 'adaptive_k':
+    elif args.poison_type == 'adaptive_k_way' or args.poison_type == 'adaptive_k' or args.poison_type == 'WaNet':
         cover_rate = '%.3f' % args.cover_rate
         poison_set_dir = 'poisoned_train_set/%s/%s_%s_cover=%s' % (args.dataset, args.poison_type, ratio, cover_rate)
     elif args.poison_type == 'adaptive_patch' or args.poison_type == 'adaptive_physical':
@@ -142,9 +142,9 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
     trigger = None
     trigger_mask = None
 
-    if poison_type in ['basic', 'badnet', 'blend', 'clean_label',
-                       'adaptive', 'adaptive_blend', 'adaptive_k', 'adaptive_k_way',
-                       'SIG', 'TaCT', 'none']:
+    if poison_type in ['basic', 'badnet', 'blend', 'clean_label', 'refool',
+                       'adaptive', 'adaptive_blend', 'adaptive_mask', 'adaptive_k', 'adaptive_k_way',
+                       'SIG', 'TaCT', 'WaNet', 'none']:
 
         if trigger_transform is None:
             trigger_transform = transforms.Compose([
@@ -182,10 +182,18 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
             poison_transform = blend.poison_transform(img_size=img_size, trigger=trigger,
                                                       target_class=target_class, alpha=alpha)
 
+        elif poison_type == 'refool':
+            from poison_tool_box import refool
+            poison_transform = refool.poison_transform(img_size=img_size, target_class=target_class, denormalizer=denormalizer, normalizer=normalizer, max_image_size=32)
+
         elif poison_type == 'clean_label':
             from poison_tool_box import clean_label
             poison_transform = clean_label.poison_transform(img_size=img_size, trigger_mark=trigger, trigger_mask=trigger_mask,
                                                             target_class=target_class)
+        
+        elif poison_type == 'WaNet':
+            from poison_tool_box import WaNet
+            poison_transform = WaNet.poison_transform(img_size=img_size, target_class=target_class)
 
         elif poison_type == 'adaptive':
             from poison_tool_box import adaptive
@@ -195,6 +203,11 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
         elif poison_type == 'adaptive_blend':
             from poison_tool_box import adaptive_blend
             poison_transform = adaptive_blend.poison_transform(img_size=img_size, trigger=trigger,
+                                                               target_class=target_class, alpha=alpha)
+
+        elif poison_type == 'adaptive_mask':
+            from poison_tool_box import adaptive_mask
+            poison_transform = adaptive_mask.poison_transform(img_size=img_size, trigger=trigger,
                                                                target_class=target_class, alpha=alpha)
         
         elif poison_type == 'adaptive_k_way':
@@ -254,13 +267,41 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
 
         if not os.path.exists(ckpt_path):
             raise NotImplementedError(
-                '[Dynamic Attack] Download pretrained generator first : https://github.com/VinAIResearch/input-aware-backdoor-attack-release')
+                '[Dynamic Attack] Download pretrained generator first: https://github.com/VinAIResearch/input-aware-backdoor-attack-release')
 
         from poison_tool_box import dynamic
         poison_transform = dynamic.poison_transform(ckpt_path=ckpt_path, channel_init=channel_init, steps=steps,
                                                     input_channel=input_channel, normalizer=normalizer,
                                                     denormalizer=denormalizer,target_class=target_class,
                                                     has_normalized=is_normalized_input, require_normalization = require_normalization)
+        return poison_transform
+    
+    elif poison_type == 'ISSBA':
+
+        if dataset_name == 'cifar10':
+            ckpt_path = './models/ISSBA_cifar10.pth'
+            input_channel = 3
+            img_size = 32
+
+        elif dataset_name == 'gtsrb':
+            ckpt_path = './models/ISSBA_gtsrb.pth'
+            input_channel = 3
+            img_size = 32
+            raise NotImplementedError('ISSBA for GTSRB is not implemented! You may implement it yourself it by training a pair of encoder and decoder using the code: https://github.com/THUYimingLi/BackdoorBox/blob/main/core/attacks/ISSBA.py')
+
+        else:
+            raise Exception("Invalid Dataset")
+
+
+        if not os.path.exists(ckpt_path):
+            raise NotImplementedError('[ISSBA Attack] Download pretrained encoder and decoder first: https://github.com/')
+
+        secret_path = os.path.join(get_poison_set_dir(args), 'secret')
+        secret = torch.load(secret_path)
+        
+        from poison_tool_box import ISSBA
+        poison_transform = ISSBA.poison_transform(ckpt_path=ckpt_path, secret=secret, normalizer=normalizer, denormalizer=denormalizer,
+                                                   enc_in_channel=input_channel, enc_height=img_size, enc_width=img_size, target_class=target_class)
         return poison_transform
 
 

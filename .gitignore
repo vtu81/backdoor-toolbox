@@ -9,9 +9,13 @@ data/cifar10/*
 data/gtsrb/*
 !data/gtsrb/.dummy
 data/imagenette2/*
+!data/imagenette2/.dummy
+data/VOCdevkit/*
+!data/VOCdevkit/.dummy
 
 models/*
 !models/.dummy
+!models/ISSBA_cifar10.pth
 
 poisoned_train_set/*
 !poisoned_train_set/.dummy
@@ -34,6 +38,8 @@ other_defenses_tool_box/results/*
 !other_defenses_tool_box/results/.dummy
 
 nohup.out
+*.slurm
+auto_*.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

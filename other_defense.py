@@ -39,17 +39,22 @@ if args.trigger is None:
 tools.setup_seed(args.seed)
 os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % args.devices
 if args.log:
-    out_path = 'other_defenses_tool_box/logs'
+    # out_path = 'other_defenses_tool_box/logs'
     # if not os.path.exists(out_path): os.mkdir(out_path)
     # out_path = os.path.join(out_path, '%s_seed=%s' % (args.dataset, args.seed))
     # if not os.path.exists(out_path): os.mkdir(out_path)
-    # out_path = os.path.join(out_path, 'other_defenses_tool_box')
-    # if not os.path.exists(out_path): os.mkdir(out_path)
-    if args.defense == 'ABL':
-        out_path = os.path.join(out_path, '%s_%s_seed=%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=False, include_poison_seed=config.record_poison_seed), args.seed))
-        # out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=False, include_poison_seed=config.record_poison_seed)))
-    else:
-        out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=True, include_poison_seed=config.record_poison_seed)))
+    # if args.defense == 'ABL':
+    #     out_path = os.path.join(out_path, '%s_%s_seed=%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=False, include_poison_seed=config.record_poison_seed), args.seed))
+    #     # out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=False, include_poison_seed=config.record_poison_seed)))
+    # else:
+    #     out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=True, include_poison_seed=config.record_poison_seed)))
+    out_path = 'logs'
+    if not os.path.exists(out_path): os.mkdir(out_path)
+    out_path = os.path.join(out_path, '%s_seed=%s' % (args.dataset, args.seed))
+    if not os.path.exists(out_path): os.mkdir(out_path)
+    out_path = os.path.join(out_path, 'other_defense')
+    if not os.path.exists(out_path): os.mkdir(out_path)
+    out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=True, include_poison_seed=config.record_poison_seed)))
     fout = open(out_path, 'w')
     ferr = open('/dev/null', 'a')
     sys.stdout = fout

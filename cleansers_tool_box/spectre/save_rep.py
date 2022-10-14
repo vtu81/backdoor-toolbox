@@ -83,7 +83,7 @@ class BackdoorDefense():
         elif args.dataset == 'cifar100':
             print('<To Be Implemented> Dataset = %s' % args.dataset)
             exit(0)
-                elif args.dataset == 'imagenette':
+        elif args.dataset == 'imagenette':
             if args.no_normalize:
                 self.data_transform_aug = transforms.Compose([
                         transforms.RandomCrop(224, 4),
@@ -134,7 +134,7 @@ class BackdoorDefense():
                                                             target_class=config.target_class[args.dataset], trigger_transform=self.data_transform,
                                                             is_normalized_input=(not args.no_normalize),
                                                             alpha=args.alpha if args.test_alpha is None else args.test_alpha,
-                                                            trigger_name=args.trigger)
+                                                            trigger_name=args.trigger, args=args)
         self.poison_set_dir = supervisor.get_poison_set_dir(args)
         
 

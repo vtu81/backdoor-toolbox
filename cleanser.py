@@ -57,6 +57,8 @@ if args.log:
     sys.stderr = ferr
 
 save_path = supervisor.get_cleansed_set_indices_dir(args)
+cleansed = os.path.exists(save_path)
+# cleansed = False # debug
 
 arch = config.arch[args.dataset]
 
@@ -117,6 +119,7 @@ poisoned_set = tools.IMG_Dataset(data_dir=poisoned_set_img_dir,
 # oracle knowledge of poison indices for evaluating detectors
 if args.poison_type != 'none':
     poison_indices = torch.load(os.path.join(poison_set_dir, 'poison_indices'))
+else: poison_indices = []
 
 # small clean split at hand for defensive usage
 clean_set_dir = os.path.join('clean_set', args.dataset, 'clean_split')
@@ -163,11 +166,11 @@ def insepct_suspicious_indices(suspicious_indices, poison_indices, poisoned_set)
             else:
                 false_positive += 1
 
-        if not os.path.exists(save_path): print('<Overall Performance Evaluation with %s>' % path)
+        if not cleansed: print('<Overall Performance Evaluation with %s>' % path)
         tpr = true_positive / num_positive
         fpr = false_positive / num_negative
-        if not os.path.exists(save_path): print('Elimination Rate = %d/%d = %f' % (true_positive, num_positive, tpr))
-        if not os.path.exists(save_path): print('Sacrifice Rate = %d/%d = %f' % (false_positive, num_negative, fpr))
+        if not cleansed: print('Elimination Rate = %d/%d = %f' % (true_positive, num_positive, tpr))
+        if not cleansed: print('Sacrifice Rate = %d/%d = %f' % (false_positive, num_negative, fpr))
         return tpr, fpr
     else:
         print('<Test Cleanser on Clean Dataset with %s>' % path)
@@ -183,7 +186,7 @@ best_recall = -999
 best_fpr = 999
 best_path = None
 
-if os.path.exists(save_path): # if the cleansed indices already exist
+if cleansed: # if the cleansed indices already exist
     print("Already cleansed!")
     remain_indices = torch.load(save_path)
     suspicious_indices = list(set(range(0,len(poisoned_set))) - set(remain_indices))
@@ -349,7 +352,7 @@ else:
                 best_path = path
 
     # Save
-    if not os.path.exists(save_path):
+    if not cleansed:
         torch.save(best_remain_indices, save_path)
         print('[Save] %s' % save_path)
         print('best base model : %s' % best_path)

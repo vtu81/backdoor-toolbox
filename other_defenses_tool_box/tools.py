@@ -1,5 +1,5 @@
 import torch
-from torch import  _pin_memory, nn
+from torch import nn
 import  torch.nn.functional as F
 from torch.utils.data import Dataset
 import os

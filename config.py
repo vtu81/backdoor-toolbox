@@ -24,11 +24,13 @@ record_model_arch = False
 
 parser_choices = {
     'dataset': ['gtsrb', 'cifar10', 'cifar100', 'imagenette'],
-    'poison_type': ['basic', 'badnet', 'blend', 'dynamic', 'clean_label', 'TaCT', 'SIG',
-                    'adaptive', 'adaptive_blend', 'adaptive_k_way', 'adaptive_k',
+    'poison_type': ['basic', 'badnet', 'blend', 'dynamic', 'clean_label', 'TaCT', 'SIG', 'WaNet', 'refool', 'ISSBA',
+                    'adaptive', 'adaptive_blend', 'adaptive_mask', 'adaptive_k_way', 'adaptive_k',
                     'none'],
-    'poison_rate': [0, 0.002, 0.004, 0.005, 0.008, 0.01, 0.015, 0.02, 0.05, 0.1],
-    'cover_rate': [0, 0.001, 0.005, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.1],
+    # 'poison_rate': [0, 0.001, 0.002, 0.004, 0.005, 0.008, 0.01, 0.015, 0.02, 0.05, 0.1],
+    # 'cover_rate': [0, 0.001, 0.005, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.1, 0.2],
+    'poison_rate': [i / 1000.0 for i in range(0, 500)],
+    'cover_rate': [i / 1000.0 for i in range(0, 500)],
 }
 
 parser_default = {
@@ -42,15 +44,19 @@ parser_default = {
 trigger_default = {
     'adaptive': 'hellokitty_32.png',
     'adaptive_blend': 'hellokitty_32.png',
+    'adaptive_mask': 'hellokitty_32.png',
     'adaptive_k_way': 'none',
     'adaptive_k': 'none',
     'clean_label' : 'badnet_patch4_dup_32.png',
     'basic' : 'badnet_patch_32.png',
     'badnet' : 'badnet_patch.png',
     'blend' : 'hellokitty_32.png',
+    'refool': 'none',
     'TaCT' : 'trojan_square_32.png',
     'SIG' : 'none',
+    'WaNet': 'none',
     'dynamic' : 'none',
+    'ISSBA': 'none',
     'none' : 'none',
 }
 
