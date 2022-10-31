@@ -4,8 +4,9 @@ assets/pca*
 assets/tsne*
 assets/oracle*
 
-data/cifar10/*
-!data/cifar10/.dummy
+data/cifar10/cifar*
+data/cifar10/clean_label/*
+!data/cifar10/clean_label/setup.sh
 data/gtsrb/*
 !data/gtsrb/.dummy
 data/imagenette2/*

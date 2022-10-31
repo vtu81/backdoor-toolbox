@@ -105,7 +105,8 @@ python other_defense.py -defense=$DEFENSE -dataset=cifar10 -poison_type=adaptive
 **Notice**:
 - `SPECTRE` is implemented in Julia. So you must install Julia and install dependencies before running SPECTRE, see [cleansers_tool_box/spectre/README.md](cleansers_tool_box/spectre/README.md) for configuration details.
 - For `clean_label` attack, run [data/cifar10/clean_label/setup.sh](data/cifar10/clean_label/setup.sh) before the first time launching it.
-- For `dynamic` attack, download pretrained generators `all2one_cifar10_ckpt.pth.tar` and `all2one_gtsrb_ckpt.pth.tar` to `[models/](models/) from https://github.com/VinAIResearch/input-aware-backdoor-attack-release before the first time launching it.
+- For `dynamic` attack, download pretrained generators `all2one_cifar10_ckpt.pth.tar` and `all2one_gtsrb_ckpt.pth.tar` to `[models/](models/) from https://drive.google.com/file/d/1vG44QYPkJjlOvPs7GpCL2MU8iJfOi0ei/view?usp=sharing and https://drive.google.com/file/d/1x01TDPwvSyMlCMDFd8nG05bHeh1jlSyx/view?usp=sharing before the first time launching it.
+ <!-- https://github.com/VinAIResearch/input-aware-backdoor-attack-release before the first time launching it. -->
 
 Some examples for creating other backdoor poison sets:
 ```bash
