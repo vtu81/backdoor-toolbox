@@ -135,7 +135,7 @@ class BackdoorDefense():
                                                             target_class=config.target_class[args.dataset], trigger_transform=self.data_transform,
                                                             is_normalized_input=(not args.no_normalize),
                                                             alpha=args.alpha if args.test_alpha is None else args.test_alpha,
-                                                            trigger_name=args.trigger)
+                                                            trigger_name=args.trigger, args=args)
         
         trigger_transform = transforms.Compose([
             transforms.ToTensor()

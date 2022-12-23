@@ -6,7 +6,6 @@ from torchvision.utils import save_image
 import numpy as np
 import config
 from torchvision import transforms
-from config import poison_seed
 from torch import nn
 from PIL import Image
 
@@ -43,8 +42,6 @@ class poison_generator():
         self.num_img = len(dataset)
 
     def generate_poisoned_training_set(self):
-        torch.manual_seed(poison_seed)
-        random.seed(poison_seed)
 
         # random sampling
         id_set = list(range(0, self.num_img))
@@ -103,12 +100,15 @@ class poison_transform():
 
         labels[:] = self.target_class
         data = self.denormalizer(data)
-        for (i, img) in enumerate(data):
-            residual = self.encoder([self.secret, img.unsqueeze(0).cuda()])
-            encoded_image = img + residual
+        # bd_data = data.clone()
+        for i in range(len(data)):
+            residual = self.encoder([self.secret, data[i].unsqueeze(0).cuda()])
+            encoded_image = data[i] + residual
             encoded_image = encoded_image.clamp(0, 1)
             data[i] = encoded_image.squeeze(0)
+            # bd_data[i] = encoded_image.squeeze(0)
         data = self.normalizer(data)
+        # bd_data = self.normalizer(bd_data)
         return data, labels
 
 
