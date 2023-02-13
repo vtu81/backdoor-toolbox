@@ -75,7 +75,6 @@ Visualize the latent space of backdoor models. See [visualize.py](visualize.py).
 
 ## Quick Start
 
-Take launching and defending an Adaptive-Blend attack as an example:
 For example, to launch and defend against the Adaptive-Blend attack:
 ```bash
 # Create a clean set
