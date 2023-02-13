@@ -1,4 +1,4 @@
-from utils import resnet, wresnet, vgg, mobilenetv2
+from utils import resnet, vgg, mobilenetv2, ember_nn, gtsrb_cnn, wresnet
 from utils import supervisor
 from utils import tools
 import torch
@@ -12,44 +12,23 @@ target_class = {
     'cifar10' : 0,
     'gtsrb' : 2,
     'imagenette': 0,
+    'imagenet' : 0
 }
 
 # default target class (without loss of generality)
-source_class = 1 # default source class for TaCT
-cover_classes = [5,7] # default cover classes for TaCT
-seed = 2333 # 999, 999, 666 (1234, 5555, 777)
+source_class = 1           #||| default source class for TaCT
+cover_classes = [5,7]      #||| default cover classes for TaCT
 poison_seed = 0
-record_poison_seed = False
+record_poison_seed = True
 record_model_arch = False
 
-parser_choices = {
-    'dataset': ['gtsrb', 'cifar10', 'cifar100', 'imagenette'],
-    'poison_type': ['basic', 'badnet', 'blend', 'dynamic', 'clean_label', 'TaCT', 'SIG', 'WaNet', 'refool', 'ISSBA',
-                    'adaptive', 'adaptive_blend', 'adaptive_mask', 'adaptive_k_way', 'adaptive_k',
-                    'none'],
-    # 'poison_rate': [0, 0.001, 0.002, 0.004, 0.005, 0.008, 0.01, 0.015, 0.02, 0.05, 0.1],
-    # 'cover_rate': [0, 0.001, 0.005, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.1, 0.2],
-    'poison_rate': [i / 1000.0 for i in range(0, 500)],
-    'cover_rate': [i / 1000.0 for i in range(0, 500)],
-}
-
-parser_default = {
-    'dataset': 'cifar10',
-    'poison_type': 'badnet',
-    'poison_rate': 0,
-    'cover_rate': 0,
-    'alpha': 0.2,
-}
-
 trigger_default = {
-    'adaptive': 'hellokitty_32.png',
     'adaptive_blend': 'hellokitty_32.png',
-    'adaptive_mask': 'hellokitty_32.png',
+    'adaptive_patch': 'none',
     'adaptive_k_way': 'none',
-    'adaptive_k': 'none',
     'clean_label' : 'badnet_patch4_dup_32.png',
     'basic' : 'badnet_patch_32.png',
-    'badnet' : 'badnet_patch.png',
+    'badnet' : 'badnet_patch_32.png',
     'blend' : 'hellokitty_32.png',
     'refool': 'none',
     'TaCT' : 'trojan_square_32.png',
@@ -57,24 +36,81 @@ trigger_default = {
     'WaNet': 'none',
     'dynamic' : 'none',
     'ISSBA': 'none',
+    'SleeperAgent': 'none',
     'none' : 'none',
+    'badnet_all_to_all' : 'badnet_patch_32.png',
+    'trojannn': 'none',
+    'trojan': 'trojan_square_32.png',
 }
 
 arch = {
     ### for base model & poison distillation
-    'cifar10': resnet.resnet20,
-    # 'cifar10': vgg.vgg16_bn,
-    # 'cifar10': mobilenetv2.mobilenetv2,
-    'gtsrb' : resnet.resnet20,
-    'imagenette': resnet.resnet20,
-    ### for constructing defense model
-    'low_dim' : resnet.resnet20_low_dim,
-    'abl':  wresnet.WideResNet
+    'cifar10': resnet.ResNet18,
+    'gtsrb' : resnet.ResNet18,
+    #resnet.ResNet18,
+    'imagenette': resnet.ResNet18,
+    'ember': ember_nn.EmberNN,
+    'imagenet' : resnet.ResNet18,
+    # 'abl':  resnet.ResNet18,
+    'abl':  wresnet.WideResNet,
+}
+
+
+# adapitve-patch triggers for different datasets
+adaptive_patch_train_trigger_names = {
+    'cifar10': [
+        'phoenix_corner_32.png',
+        'firefox_corner_32.png',
+        'badnet_patch4_32.png',
+        'trojan_square_32.png',
+    ],
+    'gtsrb': [
+        'phoenix_corner_32.png',
+        'firefox_corner_32.png',
+        'badnet_patch4_32.png',
+        'trojan_square_32.png',
+    ],
+}
+
+adaptive_patch_train_trigger_alphas = {
+    'cifar10': [
+        0.5,
+        0.2,
+        0.5,
+        0.3,
+    ],
+    'gtsrb': [
+        0.5,
+        0.2,
+        0.5,
+        0.3,
+    ],
+}
+
+adaptive_patch_test_trigger_names = {
+    'cifar10': [
+        'phoenix_corner2_32.png',
+        'badnet_patch4_32.png',
+    ],
+    'gtsrb': [
+        'firefox_corner_32.png',
+        'trojan_square_32.png',
+    ],
+}
+
+adaptive_patch_test_trigger_alphas = {
+    'cifar10': [
+        1,
+        1,
+    ],
+    'gtsrb': [
+        1,
+        1,
+    ],
 }
 
 
 def get_params(args):
-
 
     if args.dataset == 'cifar10':
 
@@ -87,21 +123,16 @@ def get_params(args):
 
         data_transform_aug = transforms.Compose([
             transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(15),
+            transforms.RandomCrop(32, 4),
             transforms.ToTensor(),
             transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261]),
         ])
 
-        lamb1 = 24.0
-        lamb2 = 24.0
-
-        lr_base = 0.1
-        lr_distillation = 0.01
-        lr_inference = 0.01
-
-        condensation_num = 2000
-        median_sample_rate = 0.1
-        weight_decay = 1e-4
+        distillation_ratio = [1/2, 1/5, 1/25, 1/50, 1/100]
+        momentums = [0.7, 0.7, 0.7, 0.7, 0.7, 0.7]
+        lambs = [20, 20, 20, 30, 30, 15]
+        lrs = [0.001, 0.001, 0.001, 0.01, 0.01, 0.01]
+        batch_factors = [2, 2, 2, 2, 2, 2]
 
     elif args.dataset == 'gtsrb':
 
@@ -118,48 +149,64 @@ def get_params(args):
             transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
         ])
 
-        # batch_id // 10 , with lamb = 4.0 => good ..
-        lamb1 = 14.0
-        lamb2 = 14.0
+        distillation_ratio = [1/2, 1/5, 1/25, 1/50, 1/100]
+        momentums = [0.7, 0.7, 0.7, 0.7, 0.7, 0.7]
+        lambs = [20, 20, 20, 20, 20, 20]
+        lrs = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
+        batch_factors = [2, 2, 4, 8, 8, 2] # 2,2,4,8,8,8
 
-        lr_base = 0.1
-        lr_distillation = 0.001
-        lr_inference = 0.001
+    elif args.dataset == 'imagenette':
 
-        condensation_num = 2000
-        median_sample_rate = 0.1
-        weight_decay = 1e-4
+        num_classes = 10
+
+        data_transform_normalize = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+        data_transform_aug = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+        distillation_ratio = [1/2, 1/5, 1/25, 1/50, 1/100]
+        momentums = [0.7, 0.7, 0.7, 0.7, 0.7, 0.7]
+        lambs = [20, 20, 20, 40, 30, 5]
+        lrs = [0.001, 0.001, 0.001, 0.01, 0.01, 0.01]
+        batch_factors = [2, 2, 2, 2, 2, 2]
 
     else:
         raise NotImplementedError('<Unimplemented Dataset> %s' % args.dataset)
 
-    from utils import wide_resnet
-    params ={
+
+    params = {
         'data_transform' : data_transform_normalize,
         'data_transform_aug' : data_transform_aug,
-        'lamb_distillation' : lamb1,
-        'lamb_inference' : lamb2,
-        'lr_base' : lr_base,
-        'lr_distillation' : lr_distillation,
-        'lr_inference' : lr_inference,
-        'weight_decay' : weight_decay,
-        'condensation_num' : condensation_num, # number of samples extracted after distillation (samples with least losses will be extracted)
-        'median_sample_rate' : median_sample_rate, # rate of samples extracted from the sorted samples to approximate the clean statistics
-        'distillation_ratio' : [1/2, 1/4],
 
+        'distillation_ratio': distillation_ratio,
+        'momentums': momentums,
+        'lambs': lambs,
+        'lrs': lrs,
+        'batch_factors': batch_factors,
+        'weight_decay' : 1e-4,
         'num_classes' : num_classes,
-        'batch_size' : 128,
-        'pretrain_epochs' : 60,
+        'batch_size' : 32,
+        'pretrain_epochs' : 100,
+        'median_sample_rate': 0.1,
         'base_arch' :  arch[args.dataset],
-        'inference_arch' :  arch['low_dim'],
-
-        'inspection_set_dir' : supervisor.get_poison_set_dir(args)
+        'arch' :  arch[args.dataset],
+        'kwargs' : {'num_workers': 2, 'pin_memory': True},
+        'inspection_set_dir': supervisor.get_poison_set_dir(args)
     }
+
 
     return params
 
 
-def get_dataset(inspection_set_dir, data_transform, args):
+def get_dataset(inspection_set_dir, data_transform, args, num_classes = 10):
+
+    print('|num_classes = %d|' % num_classes)
 
     # Set Up Inspection Set (dataset that is to be inspected
     inspection_set_img_dir = os.path.join(inspection_set_dir, 'data')
@@ -172,7 +219,10 @@ def get_dataset(inspection_set_dir, data_transform, args):
     clean_set_img_dir = os.path.join(clean_set_dir, 'data')
     clean_label_path = os.path.join(clean_set_dir, 'clean_labels')
     clean_set = tools.IMG_Dataset(data_dir=clean_set_img_dir,
-                                  label_path=clean_label_path, transforms=data_transform)
+                                  label_path=clean_label_path, transforms=data_transform,
+                                  num_classes=num_classes, shift=True)
+
+
 
     return inspection_set, clean_set
 
@@ -190,7 +240,7 @@ def get_packet_for_debug(poison_set_dir, data_transform, batch_size, args):
     kwargs = {'num_workers': 2, 'pin_memory': True}
     test_set_loader = torch.utils.data.DataLoader(
         test_set,
-        batch_size=batch_size, shuffle=True, **kwargs)
+        batch_size=256, shuffle=True, worker_init_fn=tools.worker_init, **kwargs)
 
     trigger_transform = data_transform
     poison_transform = supervisor.get_poison_transform(poison_type=args.poison_type, dataset_name=args.dataset,

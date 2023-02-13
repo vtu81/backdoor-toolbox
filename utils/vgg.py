@@ -56,6 +56,57 @@ class VGG(nn.Module):
         return x
 
 
+class VGG_low_dim(nn.Module):
+    '''
+    VGG model
+    '''
+    def __init__(self, features, num_classes=10):
+        super(VGG_low_dim, self).__init__()
+
+        self.features = features
+
+        self.reducer = nn.Linear(512, 8)
+
+        self.low_dim_classifier = nn.Sequential(
+            nn.Dropout(),
+            nn.Linear(8, 8),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(8, 8),
+            nn.ReLU(True),
+            nn.Linear(8, num_classes)
+        )
+        # Initialize weights
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                m.bias.data.zero_()
+
+
+    def forward(self, x, return_hidden=False):
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.reducer(x)
+
+        if return_hidden:
+            hidden = x
+        x = self.low_dim_classifier(x)
+        if return_hidden:
+            return x, hidden
+        else:
+            return x
+
+    def partial_forward(self,x):
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+
+        partial_classifier = self.classifier[:-1]
+        x = partial_classifier(x)
+        return x
+
+
+
 
 def make_layers(cfg, batch_norm=False):
     layers = []
@@ -110,6 +161,10 @@ def vgg16():
 def vgg16_bn(num_classes=10):
     """VGG 16-layer model (configuration "D") with batch normalization"""
     return VGG(make_layers(cfg['D'], batch_norm=True), num_classes=num_classes)
+
+def vgg16_low_dim_bn(num_classes=10):
+    """VGG 16-layer model (configuration "D") with batch normalization"""
+    return VGG_low_dim(make_layers(cfg['D'], batch_norm=True), num_classes=num_classes)
 
 
 def vgg19():

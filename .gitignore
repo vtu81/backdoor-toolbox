@@ -1,8 +1,7 @@
 # Customized
 
-assets/pca*
-assets/tsne*
-assets/oracle*
+assets/*
+!assets/.dummy
 
 data/cifar10/cifar*
 data/cifar10/clean_label/*
@@ -38,9 +37,13 @@ other_defenses_tool_box/logs
 other_defenses_tool_box/results/*
 !other_defenses_tool_box/results/.dummy
 
+slurm_scripts/logs
+slurm-*.out
+
 nohup.out
 *.slurm
 auto_*.py
+*_old.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

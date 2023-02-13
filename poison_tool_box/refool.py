@@ -13,6 +13,12 @@ import cv2
 from scipy import stats
 from config import poison_seed
 
+"""
+Code referenced from https://github.com/THUYimingLi/BackdoorBox.
+Default `ghost_rate` is set to 1 (instead of 0.49).
+Default `ghost_alpha` random range is set to [0.5, 0.75] (instead of [0.15, 0.35]).
+"""
+
 def read_image(img_path, type=None):
             img = cv2.imread(img_path)
             if type is None:        
@@ -25,9 +31,9 @@ def read_image(img_path, type=None):
                 raise NotImplementedError
 
 class poison_generator():
-
+    
     def __init__(self, img_size, dataset, poison_rate, path, target_class=0,
-                max_image_size=560, ghost_rate=0.49, alpha_b=-1., offset=(0, 0), sigma=-1, ghost_alpha=-1.):
+                max_image_size=560, ghost_rate=1, alpha_b=-1., offset=(0, 0), sigma=-1, ghost_alpha=-1.):
 
         self.img_size = img_size
         self.dataset = dataset
@@ -39,7 +45,14 @@ class poison_generator():
         self.num_img = len(dataset)
 
         # load reflection images
-        reflection_data_dir = "data/VOCdevkit/VOC2012/JPEGImages/" # please replace this with path to your desired reflection set            
+        reflection_data_dir = "data/VOCdevkit/VOC2012/JPEGImages/" # please replace this with path to your desired reflection set
+        if not os.path.exists(reflection_data_dir):
+            print(f"Reflection images data {reflection_data_dir} not exist! Please first download them by running the following script at 'data/':")
+            print("```")
+            print("wget http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar")
+            print("tar -xvf VOCtrainval_11-May-2012.tar")
+            print("```")
+            exit()
         reflection_image_path = os.listdir(reflection_data_dir)
         self.reflection_images = [read_image(os.path.join(reflection_data_dir,img_path)) for img_path in reflection_image_path[:200]]
         self.AddTriggerMixin = AddTriggerMixin(
@@ -91,7 +104,7 @@ class poison_generator():
 
 class poison_transform():
     def __init__(self, img_size, denormalizer, normalizer, target_class=0,
-                max_image_size=560, ghost_rate=0.49, alpha_b=-1., offset=(0, 0), sigma=-1, ghost_alpha=-1.):
+                max_image_size=560, ghost_rate=1, alpha_b=-1., offset=(0, 0), sigma=-1, ghost_alpha=-1.):
         
         self.img_size = img_size
         self.normalizer = normalizer
@@ -158,7 +171,7 @@ class AddTriggerMixin(object):
         sigma (interger): the sigma of gaussian kernel, set to -1 if random sigma is desired
         ghost_alpha (interger): ghost_alpha should be in $(0,1)$, set to -1 if random ghost_alpha is desire
     """
-    def __init__(self, total_num, reflection_cadidates, max_image_size=560, ghost_rate=0.49, alpha_b=-1., offset=(0, 0), sigma=-1, ghost_alpha=-1.):
+    def __init__(self, total_num, reflection_cadidates, max_image_size=560, ghost_rate=1, alpha_b=-1., offset=(0, 0), sigma=-1, ghost_alpha=-1.):
         super(AddTriggerMixin,self).__init__()
         self.reflection_candidates = reflection_cadidates
         self.max_image_size=max_image_size
@@ -174,7 +187,8 @@ class AddTriggerMixin(object):
             self.offset_ys = np.zeros((total_num,),np.int32) + offset[1]
         self.ghost_alpha = ghost_alpha
         self.ghost_alpha_switchs = np.random.uniform(0,1,total_num)
-        self.ghost_alphas = np.random.uniform(0.15,0.5,total_num) if ghost_alpha < 0 else np.zeros(total_num)+ghost_alpha
+        # self.ghost_alphas = np.random.uniform(0.15,0.5,total_num) if ghost_alpha < 0 else np.zeros(total_num)+ghost_alpha
+        self.ghost_alphas = np.random.uniform(0.5,0.75,total_num) if ghost_alpha < 0 else np.zeros(total_num)+ghost_alpha
         self.sigmas = np.random.uniform(1,5,total_num) if sigma<0 else np.zeros(total_num)+sigma
         self.atts = 1.08 + np.random.random(total_num)/10.0
         self.new_ws = np.random.uniform(0,1,total_num)

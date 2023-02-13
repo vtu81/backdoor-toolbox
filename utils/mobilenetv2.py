@@ -129,5 +129,104 @@ class MobileNetV2(nn.Module):
 
         return nn.Sequential(*layers)
 
+
+class MobileNetV2_low_dim(nn.Module):
+
+    def __init__(self, class_num=10):
+        super().__init__()
+
+        self.pre = nn.Sequential(
+            nn.Conv2d(3, 32, 1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU6(inplace=True)
+        )
+
+        self.stage1 = LinearBottleNeck(32, 16, 1, 1)
+        self.stage2 = self._make_stage(2, 16, 24, 2, 6)
+        self.stage3 = self._make_stage(3, 24, 32, 2, 6)
+        self.stage4 = self._make_stage(4, 32, 64, 2, 6)
+        self.stage5 = self._make_stage(3, 64, 96, 1, 6)
+        self.stage6 = self._make_stage(3, 96, 160, 1, 6)
+        self.stage7 = LinearBottleNeck(160, 320, 1, 6)
+
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(320, 1280, 1),
+            nn.BatchNorm2d(1280),
+            nn.ReLU6(inplace=True)
+        )
+
+        self.reducer = nn.Conv2d(1280, 8, 1)
+
+        self.classifer = nn.Conv2d(8, class_num, 1)
+
+    def forward(self, x, return_hidden=False):
+        x = self.pre(x)
+        x = self.stage1(x)
+        x = self.stage2(x)
+        x = self.stage3(x)
+        x = self.stage4(x)
+        x = self.stage5(x)
+        x = self.stage6(x)
+        x = self.stage7(x)
+        x = self.conv1(x)
+        x = F.adaptive_avg_pool2d(x, 1)
+
+        x = self.reducer(x)
+
+        if return_hidden:
+            hidden = x.view(x.size(0), -1)
+
+        x = self.classifer(x)
+        x = x.view(x.size(0), -1)
+
+        if return_hidden:
+            return x, hidden
+        else:
+            return x
+
+    def partial_forward(self, x, last_conv_width=9, target_class=2):
+        x = self.pre(x)
+        x = self.stage1(x)
+        x = self.stage2(x)
+        x = self.stage3(x)
+        x = self.stage4(x)
+        x = self.stage5(x)
+        x = self.stage6(x)
+        x = self.stage7(x)
+        x = self.conv1(x)
+        x = F.adaptive_avg_pool2d(x, 1)
+        x = x[:, 0]
+        # # print(self.conv2)
+        # # print(x.shape)
+        # conv = nn.Conv2d(last_conv_width, 1, 1)
+        # conv.weight.data[0, :last_conv_width] = self.conv2.weight.data[target_class, :last_conv_width]
+        # conv.bias.data[0] = self.conv2.bias.data[target_class]
+        # # conv.bias.data -= conv.bias.data
+        # # print(conv.weight)
+        # # print(conv.bias)
+        # conv = conv.to(device=x.device)
+        # # print(conv.weight, conv.bias)
+        # x = conv(x[:, :last_conv_width])
+        x = x.view(x.size(0), -1)
+        return x
+
+    def _make_stage(self, repeat, in_channels, out_channels, stride, t):
+
+        layers = []
+        layers.append(LinearBottleNeck(in_channels, out_channels, stride, t))
+
+        while repeat - 1:
+            layers.append(LinearBottleNeck(out_channels, out_channels, 1, t))
+            repeat -= 1
+
+        return nn.Sequential(*layers)
+
+
+
+
+
 def mobilenetv2(num_classes=10):
-    return MobileNetV2(class_num=10)
+    return MobileNetV2(class_num=num_classes)
+
+def mobilenetv2_low_dim(num_classes=10):
+    return MobileNetV2_low_dim(class_num=num_classes)

@@ -57,13 +57,16 @@ class STRIP():
         random.shuffle(samples)
         samples = samples[:self.N]
 
-        for i in samples:
-            X, Y = source_set[i]
-            X, Y = X.cuda(), Y.cuda()
-            _test = self.superimpose(_input, X)
-            entropy = self.entropy(_test).cpu().detach()
-            _list.append(entropy)
-            # _class = self.model.get_class(_test)
+        with torch.no_grad():
+
+            for i in samples:
+                X, Y = source_set[i]
+                X, Y = X.cuda(), Y.cuda()
+                _test = self.superimpose(_input, X)
+                entropy = self.entropy(_test).cpu().detach()
+                _list.append(entropy)
+                # _class = self.model.get_class(_test)
+
         return torch.stack(_list).mean(0)
 
     def superimpose(self, _input1: torch.Tensor, _input2: torch.Tensor, alpha: float = None):

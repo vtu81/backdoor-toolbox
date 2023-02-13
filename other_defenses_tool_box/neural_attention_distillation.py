@@ -8,6 +8,7 @@ from torchvision import transforms, datasets
 import os
 import config
 from utils import supervisor
+from utils.tools import test
 from . import BackdoorDefense
 from tqdm import tqdm
 from .tools import generate_dataloader, AverageMeter, accuracy
@@ -38,7 +39,6 @@ class NAD(BackdoorDefense):
         self.erase_epochs = erase_epochs
         
         self.p = 2 # power for AT
-        self.ratio = 0.05 # ratio of training data to use
         self.batch_size = 64
         self.betas = [500, 1000, 1000] # hyperparams `betas` for AT loss (for ResNet and WideResNet archs)
         self.threshold_clean = 70.0 # don't save if clean acc drops too much
@@ -57,7 +57,13 @@ class NAD(BackdoorDefense):
         
         # 5% of the clean train set
         if args.dataset == 'cifar10':
+            self.lr = 0.1
+            self.ratio = 0.05 # ratio of training data to use
             full_train_set = datasets.CIFAR10(root=os.path.join(config.data_dir, 'cifar10'), train=True, download=True)
+        elif args.dataset == 'gtsrb':
+            self.lr = 0.02
+            self.ratio = 0.2 # ratio of training data to use
+            full_train_set = datasets.GTSRB(os.path.join(config.data_dir, 'gtsrb'), split='train', download=True)
         else: raise NotImplementedError()
         self.train_data = DatasetCL(self.ratio, full_dataset=full_train_set, transform=self.data_transform_aug)
         self.train_loader = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
@@ -78,7 +84,7 @@ class NAD(BackdoorDefense):
 
         # initialize optimizer
         optimizer = torch.optim.SGD(teacher.parameters(),
-                                    lr=0.1,
+                                    lr=self.lr,
                                     momentum=0.9,
                                     weight_decay=1e-4,
                                     nesterov=True)
@@ -89,23 +95,26 @@ class NAD(BackdoorDefense):
         print('----------- Train Initialization --------------')
         for epoch in range(0, self.teacher_epochs):
 
-            self.adjust_learning_rate(optimizer, epoch, 0.1)
+            self.adjust_learning_rate(optimizer, epoch, self.lr)
 
             if epoch == 0:
                 # before training test firstly
-                self.test(teacher, criterion, epoch)
+                # self.test(teacher, criterion, epoch)
+                test(teacher, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
 
             self.train_step(self.train_loader, teacher, optimizer, criterion, epoch+1)
 
             # evaluate on testing set
-            acc_clean, acc_bad = self.test(teacher, criterion, epoch+1)
+            # acc_clean, acc_bad = self.test(teacher, criterion, epoch+1)
+            # acc_clean, acc_bad = acc_clean[0], acc_bad[0]
+            acc_clean, acc_bad = test(teacher, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
 
             # remember best precision and save checkpoint
             # is_best = acc_clean[0] > self.threshold_clean
-            # self.threshold_clean = min(acc_bad[0], self.threshold_clean)
+            # self.threshold_clean = min(acc_bad, self.threshold_clean)
 
-            # best_clean_acc = acc_clean[0]
-            # best_bad_acc = acc_bad[0]
+            # best_clean_acc = acc_clean
+            # best_bad_acc = acc_bad
             
             t_model_path = os.path.join(self.folder_path, 'NAD_T_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
             self.save_checkpoint(teacher.state_dict(), True, t_model_path)
@@ -140,7 +149,7 @@ class NAD(BackdoorDefense):
 
         # initialize optimizer
         optimizer = torch.optim.SGD(student.parameters(),
-                                    lr=0.1,
+                                    lr=self.lr,
                                     momentum=0.9,
                                     weight_decay=1e-4,
                                     nesterov=True)
@@ -152,26 +161,29 @@ class NAD(BackdoorDefense):
         print('----------- Train Initialization --------------')
         for epoch in range(0, self.erase_epochs):
 
-            self.adjust_learning_rate_erase(optimizer, epoch, 0.1)
+            self.adjust_learning_rate_erase(optimizer, epoch, self.lr)
 
             # train every epoch
             criterions = {'criterionCls': criterionCls, 'criterionAT': criterionAT}
 
             if epoch == 0:
                 # before training test firstly
-                self.test_erase(nets, criterions, self.betas, epoch)
+                # self.test_erase(nets, criterions, self.betas, epoch)
+                test(student, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
 
             self.train_step_erase(self.train_loader, nets, optimizer, criterions, self.betas, epoch+1)
 
             # evaluate on testing set
-            acc_clean, acc_bad = self.test_erase(nets, criterions, self.betas, epoch+1)
+            # acc_clean, acc_bad = self.test_erase(nets, criterions, self.betas, epoch+1)
+            # acc_clean, acc_bad = acc_clean[0], acc_bad[0]
+            acc_clean, acc_bad = test(student, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
 
             # remember best precision and save checkpoint
-            is_best = acc_clean[0] > self.threshold_clean
-            self.threshold_clean = min(acc_bad[0], self.threshold_clean)
+            is_best = acc_clean > self.threshold_clean
+            self.threshold_clean = min(acc_bad, self.threshold_clean)
 
-            best_clean_acc = acc_clean[0]
-            best_bad_acc = acc_bad[0]
+            best_clean_acc = acc_clean
+            best_bad_acc = acc_bad
             
             erase_model_path = os.path.join(self.folder_path, 'NAD_E_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
             self.save_checkpoint(student.state_dict(), is_best, erase_model_path)
@@ -369,11 +381,14 @@ class NAD(BackdoorDefense):
         if epoch < 2:
             lr = lr
         elif epoch < 20:
-            lr = 0.01
+            # lr = 0.01
+            lr *= 0.1
         elif epoch < 30:
-            lr = 0.0001
+            # lr = 0.0001
+            lr *= 0.001
         else:
-            lr = 0.0001
+            # lr = 0.0001
+            lr *= 0.001
         print('epoch: {}  lr: {:.4f}'.format(epoch, lr))
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr

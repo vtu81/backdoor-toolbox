@@ -2,7 +2,6 @@ import os
 import torch
 import random
 from torchvision.utils import save_image
-from config import poison_seed
 
 class poison_generator():
 
@@ -20,8 +19,6 @@ class poison_generator():
         self.num_img = len(dataset)
 
     def generate_poisoned_training_set(self):
-        torch.manual_seed(poison_seed)
-        random.seed(poison_seed)
 
         # random sampling
         id_set = list(range(0,self.num_img))

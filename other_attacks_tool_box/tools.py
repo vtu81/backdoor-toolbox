@@ -79,17 +79,16 @@ def generate_dataloader(dataset='cifar10', dataset_path='./data/', batch_size=12
     elif dataset == 'gtsrb':
         if data_transform is None:
             data_transform = transforms.Compose([
-                transforms.Resize((32, 32)),
                 transforms.ToTensor(),
                 transforms.Normalize([0.3337, 0.3064, 0.3171], [0.2672, 0.2564, 0.2629]),
             ])
         dataset_path = os.path.join(dataset_path, 'gtsrb')
         if split == 'train':
-            train_data = datasets.GTSRB(root=dataset_path, split='train', download=False, transform=data_transform)
+            train_data = datasets.GTSRB(root=dataset_path, train=True, download=False, transform=data_transform)
             train_data_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=4, pin_memory=True)
             return train_data_loader
         elif split == 'std_test' or split == 'full_test':
-            test_data = datasets.GTSRB(root=dataset_path, split='test', download=False, transform=data_transform)
+            test_data = datasets.GTSRB(root=dataset_path, train=False, download=False, transform=data_transform)
             test_data_loader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=4, pin_memory=True)
             return test_data_loader
         elif split == 'valid' or split == 'val':
@@ -158,12 +157,10 @@ def unpack_poisoned_train_set(args, batch_size=128, shuffle=False, data_transfor
         if data_transform is None:
             if args.no_normalize:
                 data_transform = transforms.Compose([
-                        transforms.Resize((32, 32)),
                         transforms.ToTensor(),
                 ])
             else:
                 data_transform = transforms.Compose([
-                        transforms.Resize((32, 32)),
                         transforms.ToTensor(),
                         transforms.Normalize([0.3337, 0.3064, 0.3171], [0.2672, 0.2564, 0.2629]),
                 ])
@@ -251,59 +248,38 @@ def val_atk(args, model, split='test', batch_size=100):
             data_transform = transforms.Compose([
                     transforms.ToTensor(),
             ])
-            trigger_transform = transforms.Compose([
-                    transforms.ToTensor(),
-            ])
         else:
             data_transform = transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
-            ])
-            trigger_transform = transforms.Compose([
                     transforms.ToTensor(),
                     transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
             ])
     elif args.dataset == 'gtsrb':
-        if args.no_normalize:
-            data_transform = transforms.Compose([
-                    transforms.Resize((32, 32)),
-                    transforms.ToTensor(),
-            ])
-            trigger_transform = transforms.Compose([
-                    transforms.ToTensor(),
-            ])
-        else:
-            data_transform = transforms.Compose([
-                    transforms.Resize((32, 32)),
-                    transforms.ToTensor(),
-                    transforms.Normalize([0.3337, 0.3064, 0.3171], [0.2672, 0.2564, 0.2629]),
-            ])
-            trigger_transform = transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize([0.3337, 0.3064, 0.3171], [0.2672, 0.2564, 0.2629]),
-            ])
+        if data_transform is None:
+            if args.no_normalize:
+                data_transform = transforms.Compose([
+                        transforms.ToTensor(),
+                ])
+            else:
+                data_transform = transforms.Compose([
+                        transforms.ToTensor(),
+                        transforms.Normalize([0.3337, 0.3064, 0.3171], [0.2672, 0.2564, 0.2629]),
+                ])
     elif args.dataset == 'imagenette':
-        if args.no_normalize:
-            data_transform = transforms.Compose([
-                transforms.ToTensor(),
-            ])
-            trigger_transform = transforms.Compose([
-                transforms.ToTensor(),
-            ])
-        else:
-            data_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-            ])    
-            trigger_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-            ])
+        if data_transform is None:
+            if args.no_normalize:
+                data_transform = transforms.Compose([
+                    transforms.ToTensor(),
+                ])
+            else:
+                data_transform = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                ])    
     else: raise NotImplementedError()
 
     poison_transform = supervisor.get_poison_transform(poison_type=args.poison_type, dataset_name=args.dataset,
                                                        target_class=config.target_class[args.dataset],
-                                                       trigger_transform=trigger_transform,
+                                                       trigger_transform=data_transform,
                                                        is_normalized_input=(not args.no_normalize),
                                                        alpha=args.alpha if args.test_alpha is None else args.test_alpha,
                                                        trigger_name=args.trigger, args=args)

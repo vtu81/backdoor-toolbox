@@ -5,19 +5,19 @@ from torchvision.utils import save_image
 
 class poison_generator():
 
-    def __init__(self, img_size, dataset, poison_rate, path, trigger_mark, trigger_mask, target_class=0, alpha=1.0):
+    def __init__(self, img_size, dataset, poison_rate, path, trigger_mark, trigger_mask, num_classes, alpha=1.0):
 
         self.img_size = img_size
         self.dataset = dataset
         self.poison_rate = poison_rate
         self.path = path  # path to save the dataset
-        self.target_class = target_class # by default : target_class = 0
         self.trigger_mark = trigger_mark
         self.trigger_mask = trigger_mask
         self.alpha = alpha
 
         # number of images
         self.num_img = len(dataset)
+        self.num_classes = num_classes
 
     def generate_poisoned_training_set(self):
 
@@ -36,7 +36,7 @@ class poison_generator():
             img, gt = self.dataset[i]
 
             if pt < num_poison and poison_indices[pt] == i:
-                gt = self.target_class
+                gt = (gt+1) % self.num_classes
                 img = img + self.alpha * self.trigger_mask * (self.trigger_mark - img)
                 pt+=1
 
@@ -53,9 +53,9 @@ class poison_generator():
 
 
 class poison_transform():
-    def __init__(self, img_size, trigger_mark, trigger_mask, target_class=0, alpha=1.0):
+    def __init__(self, img_size, trigger_mark, trigger_mask, num_classes, alpha=1.0):
         self.img_size = img_size
-        self.target_class = target_class # by default : target_class = 0
+        self.num_classes = num_classes
         self.trigger_mark = trigger_mark
         self.trigger_mask = trigger_mask
         self.alpha = alpha
@@ -63,6 +63,6 @@ class poison_transform():
     def transform(self, data, labels):
         data, labels = data.clone(), labels.clone()
         data = data + self.alpha * self.trigger_mask * (self.trigger_mark - data)
-        labels[:] = self.target_class
-
+        labels = (labels + 1) % self.num_classes
+        
         return data, labels

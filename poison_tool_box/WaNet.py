@@ -1,5 +1,6 @@
 import os
 import torch
+from torch import nn
 import torch.nn.functional as F
 import random
 from torchvision.utils import save_image
@@ -9,10 +10,9 @@ from config import poison_seed
 WaNet (static poisoning). https://github.com/VinAIResearch/Warping-based_Backdoor_Attack-release
 """
 
-
 class poison_generator():
 
-    def __init__(self, img_size, dataset, poison_rate, cover_rate, path, target_class=0):
+    def __init__(self, img_size, dataset, poison_rate, cover_rate, path, identity_grid, noise_grid, s=0.5, k=4, grid_rescale=1, target_class=0):
 
         self.img_size = img_size
         self.dataset = dataset
@@ -23,20 +23,12 @@ class poison_generator():
 
         # number of images
         self.num_img = len(dataset)
-
-        # Prepare grid
-        self.s = 0.5
-        self.k = 4
-        self.grid_rescale = 1
-        ins = torch.rand(1, 2, self.k, self.k) * 2 - 1
-        ins = ins / torch.mean(torch.abs(ins))
-        self.noise_grid = (
-            F.upsample(ins, size=self.img_size, mode="bicubic", align_corners=True)
-            .permute(0, 2, 3, 1)
-        )
-        array1d = torch.linspace(-1, 1, steps=self.img_size)
-        x, y = torch.meshgrid(array1d, array1d)
-        self.identity_grid = torch.stack((y, x), 2)[None, ...]
+        
+        self.s = s
+        self.k = k
+        self.grid_rescale = grid_rescale
+        self.identity_grid = identity_grid
+        self.noise_grid = noise_grid
 
     def generate_poisoned_training_set(self):
         torch.manual_seed(poison_seed)
@@ -66,7 +58,7 @@ class poison_generator():
         grid_temps = (self.identity_grid + self.s * self.noise_grid / self.img_size) * self.grid_rescale
         grid_temps = torch.clamp(grid_temps, -1, 1)
 
-        ins = torch.rand(self.img_size, self.img_size, 2) * 2 - 1
+        ins = torch.rand(1, self.img_size, self.img_size, 2) * 2 - 1
         grid_temps2 = grid_temps + ins / self.img_size
         grid_temps2 = torch.clamp(grid_temps2, -1, 1)
 
@@ -109,32 +101,27 @@ class poison_generator():
 
 class poison_transform():
 
-    def __init__(self, img_size, target_class=0):
+    def __init__(self, img_size, normalizer, denormalizer, identity_grid, noise_grid, s=0.5, k=4, grid_rescale=1, target_class=0):
 
         self.img_size = img_size
+        self.normalizer = normalizer
+        self.denormalizer = denormalizer
         self.target_class = target_class
 
-        # Prepare grid
-        self.s = 0.5
-        self.k = 4
-        self.grid_rescale = 1
-        ins = torch.rand(1, 2, self.k, self.k) * 2 - 1
-        ins = ins / torch.mean(torch.abs(ins))
-        self.noise_grid = (
-            F.upsample(ins, size=self.img_size, mode="bicubic", align_corners=True)
-            .permute(0, 2, 3, 1)
-            .cuda()
-        )
-        array1d = torch.linspace(-1, 1, steps=self.img_size)
-        x, y = torch.meshgrid(array1d, array1d)
-        self.identity_grid = torch.stack((y, x), 2)[None, ...].cuda()
+        self.s = s
+        self.k = k
+        self.grid_rescale = grid_rescale
+        self.identity_grid = identity_grid.cuda()
+        self.noise_grid = noise_grid.cuda()
 
     def transform(self, data, labels):
         grid_temps = (self.identity_grid + self.s * self.noise_grid / self.img_size) * self.grid_rescale
         grid_temps = torch.clamp(grid_temps, -1, 1)
 
         data, labels = data.clone(), labels.clone()
+        data = self.denormalizer(data)
         data = F.grid_sample(data, grid_temps.repeat(data.shape[0], 1, 1, 1), align_corners=True)
+        data = self.normalizer(data)
         labels[:] = self.target_class
 
         # debug

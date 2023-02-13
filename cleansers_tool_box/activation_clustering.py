@@ -31,7 +31,7 @@ def get_features(data_loader, model, num_classes):
             _, x_feats = model(ins_data, True)
             this_batch_size = len(ins_target)
             for bid in range(this_batch_size):
-                feats.append(x_feats[bid].cpu().numpy())
+                feats.append(x_feats[bid])
                 b_target = ins_target[bid].item()
                 class_indices[b_target].append(sid + bid)
             sid += this_batch_size
@@ -43,8 +43,8 @@ def cleanser(inspection_set, model, num_classes, args, clusters=2):
         adapted from : https://github.com/hsouri/Sleeper-Agent/blob/master/forest/filtering_defenses.py
     """
 
-    from sklearn.decomposition import PCA
-    from sklearn.decomposition import FastICA
+    #from sklearn.decomposition import PCA
+    #from sklearn.decomposition import FastICA
     from sklearn.cluster import KMeans
 
     kwargs = {'num_workers': 4, 'pin_memory': True}
@@ -71,14 +71,30 @@ def cleanser(inspection_set, model, num_classes, args, clusters=2):
 
     for target_class in range(num_classes):
 
+        print('class - %d' % target_class)
+
         if len(class_indices[target_class]) <= 1: continue # no need to perform clustering...
 
-        temp_feats = np.array([feats[temp_idx] for temp_idx in class_indices[target_class]])
-        temp_feats = temp_feats - temp_feats.mean(axis=0)
-        projector = PCA(n_components=10)
+        temp_feats = [feats[temp_idx].unsqueeze(dim=0) for temp_idx in class_indices[target_class]]
+        temp_feats = torch.cat( temp_feats , dim=0)
+        temp_feats = temp_feats - temp_feats.mean(dim=0)
 
-        projected_feats = projector.fit_transform(temp_feats)
-        kmeans = KMeans(n_clusters=2, max_iter=2000).fit(projected_feats)
+        _, _, V = torch.svd(temp_feats, compute_uv=True, some=False)
+
+        axes = V[:, :10]
+        projected_feats = torch.matmul(temp_feats, axes)
+        projected_feats = projected_feats.cpu().numpy()
+
+        print(projected_feats.shape)
+
+        #projector = PCA(n_components=10)
+        #print('start pca')
+        #projected_feats = projector.fit_transform(temp_feats)
+        #print('end pca')
+
+        print('start k-means')
+        kmeans = KMeans(n_clusters=2).fit(projected_feats)
+        print('end k-means')
 
         # by default, take the smaller cluster as the poisoned cluster
         if kmeans.labels_.sum() >= len(kmeans.labels_) / 2.:

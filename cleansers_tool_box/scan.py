@@ -193,9 +193,10 @@ class SCAn:
 
         G = -np.linalg.pinv(N * Su + Se)
         mu = np.zeros([1, M])
+        SeG = np.matmul(Se,G)
         for i in range(N):
             vec = X[i]
-            dd = np.matmul(np.matmul(Se, G), np.transpose(vec))
+            dd = np.matmul(SeG, np.transpose(vec))
             mu = mu - dd
 
         b1 = np.matmul(np.matmul(mu, F), np.transpose(mu)) - np.matmul(np.matmul(u1, F), np.transpose(u1))

@@ -119,6 +119,9 @@ class NC(BackdoorDefense):
         mark_list = torch.stack(mark_list)
         mask_list = torch.stack(mask_list)
         loss_list = torch.as_tensor(loss_list)
+        
+        # f = np.load(file_path)
+        # mark_list, mask_list, loss_list = torch.tensor(f['mark_list']), torch.tensor(f['mask_list']), torch.tensor(f['loss_list'])
         return mark_list, mask_list, loss_list
 
     def loss_fn(self, _input, _label, Y, mask, mark, label):
@@ -294,12 +297,20 @@ class NC(BackdoorDefense):
                 transforms.RandomCrop(32, 4),
                 transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
             ])
+            lr = 0.01
+        elif self.args.dataset == 'gtsrb':
+            full_train_set = datasets.GTSRB(os.path.join(config.data_dir, 'gtsrb'), split='train', download=True, transform=transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()]))
+            data_transform_aug = transforms.Compose([
+                transforms.RandomRotation(15),
+                transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
+            ])
+            lr = 0.001
         else:
             raise NotImplementedError()
         train_data = DatasetCL(0.1, full_dataset=full_train_set, transform=data_transform_aug, poison_ratio=0.2, mark=mark, mask=mask)
         train_loader = DataLoader(train_data, batch_size=128, shuffle=True)        
         criterion = nn.CrossEntropyLoss().cuda()
-        optimizer = torch.optim.SGD(self.model.parameters(), 0.01, momentum=self.momentum, weight_decay=self.weight_decay)
+        optimizer = torch.optim.SGD(self.model.parameters(), lr, momentum=self.momentum, weight_decay=self.weight_decay)
 
         val_atk(self.args, self.model)
         

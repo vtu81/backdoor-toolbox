@@ -34,7 +34,6 @@ def cleanser(inspection_set, model, num_classes, args):
         inspection_set,
         batch_size=128, shuffle=False, **kwargs)
 
-
     # Spectral Signature requires an expected poison ratio (we allow the oracle here as a baseline)
     num_poisons_expected = args.poison_rate * len(inspection_set) * 1.5 # allow removing additional 50% (following the original paper)
 

@@ -5,23 +5,23 @@ import argparse
 from torch import nn
 import numpy as np
 import config
-from utils import supervisor, tools
+from utils import supervisor, tools, default_args
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-dataset', type=str, required=False,
-                    default=config.parser_default['dataset'],
-                    choices=config.parser_choices['dataset'])
+                    default=default_args.parser_default['dataset'],
+                    choices=default_args.parser_choices['dataset'])
 parser.add_argument('-poison_type', type=str,  required=False,
-                    choices=config.parser_choices['poison_type'],
-                    default=config.parser_default['poison_type'])
+                    choices=default_args.parser_choices['poison_type'],
+                    default=default_args.parser_default['poison_type'])
 parser.add_argument('-poison_rate', type=float,  required=False,
-                    choices=config.parser_choices['poison_rate'],
-                    default=config.parser_default['poison_rate'])
+                    choices=default_args.parser_choices['poison_rate'],
+                    default=default_args.parser_default['poison_rate'])
 parser.add_argument('-cover_rate', type=float,  required=False,
-                    choices=config.parser_choices['cover_rate'],
-                    default=config.parser_default['cover_rate'])
+                    choices=default_args.parser_choices['cover_rate'],
+                    default=default_args.parser_default['cover_rate'])
 parser.add_argument('-alpha', type=float,  required=False,
-                    default=config.parser_default['alpha'])
+                    default=default_args.parser_default['alpha'])
 parser.add_argument('-test_alpha', type=float,  required=False, default=None)
 parser.add_argument('-trigger', type=str,  required=False,
                     default=None)
@@ -31,10 +31,10 @@ parser.add_argument('-model_path', required=False, default=None)
 
 parser.add_argument('-no_normalize', default=False, action='store_true')
 parser.add_argument('-cleanser', type=str, required=True,
-                    choices=['SCAn', 'AC', 'SS', 'Strip', 'CT', 'SPECTRE'])
+                    choices=default_args.parser_choices['cleanser'])
 parser.add_argument('-devices', type=str, default='0')
 parser.add_argument('-log', default=False, action='store_true')
-parser.add_argument('-seed', type=int, required=False, default=config.seed)
+parser.add_argument('-seed', type=int, required=False, default=default_args.seed)
 
 args = parser.parse_args()
 
@@ -137,10 +137,10 @@ if (hasattr(args, 'model_path') and args.model_path is not None) or (hasattr(arg
     model_list.append(path)
     alias_list.append('assigned')
 else:
-    args.no_aug = True
-    path = supervisor.get_model_dir(args)
-    model_list.append(path)
-    alias_list.append(supervisor.get_model_name(args))
+    # args.no_aug = True
+    # path = supervisor.get_model_dir(args)
+    # model_list.append(path)
+    # alias_list.append(supervisor.get_model_name(args))
 
     args.no_aug = False
     path = supervisor.get_model_dir(args)
@@ -241,15 +241,18 @@ else:
             best_fpr = fpr
             best_remain_indices = remain_indices
             best_path = path
-    
+    elif args.cleanser == 'Frequency': # Frequency method does not require already trained models either
+        from cleansers_tool_box import frequency
+        suspicious_indices = frequency.cleanser(args)
     else: # other cleansers rely on already trained models
         for (vid, path) in enumerate(model_list): # for both backdoor models with and without augmentation
-
-            ckpt = torch.load(path)
-
             # base model for poison detection
             model = arch(num_classes=num_classes)
-            model.load_state_dict(ckpt)
+            if os.path.exists(path):
+                ckpt = torch.load(path)
+                model.load_state_dict(ckpt)
+            else:
+                print(f"Model {path} not exists!")
             model = nn.DataParallel(model)
             model = model.cuda()
             model.eval()
@@ -330,6 +333,10 @@ else:
             elif args.cleanser == 'Strip':
                 from cleansers_tool_box import strip
                 suspicious_indices = strip.cleanser(poisoned_set, clean_set, model, args)
+            elif args.cleanser == 'SentiNet':
+                from cleansers_tool_box import sentinet
+                suspicious_indices = sentinet.cleanser(args, model, defense_fpr=0.05, N=100)
+                # suspicious_indices = sentinet.cleanser(args, model, defense_fpr=None, N=100)
             else:
                 raise NotImplementedError('Unimplemented Cleanser')
 
@@ -342,20 +349,20 @@ else:
 
             tpr, fpr = insepct_suspicious_indices(suspicious_indices, poison_indices, poisoned_set)
             if tpr > best_recall:
-                    best_recall = tpr
-                    best_remain_indices = remain_indices
-                    best_fpr = fpr
-                    best_path = path
+                best_recall = tpr
+                best_remain_indices = remain_indices
+                best_fpr = fpr
+                best_path = path
             elif tpr == best_recall and fpr < best_fpr:
                 best_fpr = fpr
                 best_remain_indices = remain_indices
                 best_path = path
 
-    # Save
-    if not cleansed:
-        torch.save(best_remain_indices, save_path)
-        print('[Save] %s' % save_path)
-        print('best base model : %s' % best_path)
+# Save
+if not cleansed:
+    torch.save(best_remain_indices, save_path)
+    print('[Save] %s' % save_path)
+    print('best base model : %s' % best_path)
 
 
 if args.poison_type != 'none':
