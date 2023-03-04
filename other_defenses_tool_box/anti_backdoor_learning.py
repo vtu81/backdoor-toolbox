@@ -467,7 +467,10 @@ class ABL(BackdoorDefense):
 
         # load indices
         poison_set_dir = supervisor.get_poison_set_dir(args)
-        poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
+        if os.path.exists(os.path.join(poison_set_dir, 'data')): # if old version
+            poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
+        if os.path.exists(os.path.join(poison_set_dir, 'imgs')): # if new version
+            poisoned_set_img_dir = os.path.join(poison_set_dir, 'imgs')
         poisoned_set_label_path = os.path.join(poison_set_dir, 'labels')
 
         # load data

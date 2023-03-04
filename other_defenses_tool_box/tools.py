@@ -182,7 +182,10 @@ def unpack_poisoned_train_set(args, batch_size=128, shuffle=False, data_transfor
 
     poison_set_dir = supervisor.get_poison_set_dir(args)
 
-    poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
+    if os.path.exists(os.path.join(poison_set_dir, 'data')): # if old version
+        poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
+    if os.path.exists(os.path.join(poison_set_dir, 'imgs')): # if new version
+        poisoned_set_img_dir = os.path.join(poison_set_dir, 'imgs')
     poisoned_set_label_path = os.path.join(poison_set_dir, 'labels')
     poison_indices_path = os.path.join(poison_set_dir, 'poison_indices')
     cover_indices_path = os.path.join(poison_set_dir, 'cover_indices') # for adaptive attacks

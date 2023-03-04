@@ -1007,21 +1007,26 @@ class poison_generator():
         
         poisoned_train_dataset, poison_ids = self.sleeper_agent.train(init_model, self.normalizer, self.schedule)
         poison_indices = list(range(self.num_img - len(poison_ids), self.num_img)) # last len(poison_ids) images are the poisoned samples
+        
+        img_set = []
         label_set = []
         cnt = 0
         
         for i in range(self.num_img):
             img, gt = poisoned_train_dataset[i]
-            img_file_name = '%d.png' % cnt
-            img_file_path = os.path.join(self.path, img_file_name)
-            save_image(img, img_file_path)
+            # img_file_name = '%d.png' % cnt
+            # img_file_path = os.path.join(self.path, img_file_name)
+            # save_image(img, img_file_path)
+            
+            img_set.append(img.unsqueeze(0))
             label_set.append(gt)
             cnt += 1
 
+        img_set = torch.cat(img_set, dim=0)
         label_set = torch.LongTensor(label_set)
         print("Poison indices:", poison_indices)
 
-        return poison_indices, label_set
+        return img_set, poison_indices, label_set
 
 
 class poison_transform():

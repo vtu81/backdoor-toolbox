@@ -1,4 +1,4 @@
-import  torch
+import  torch, torchvision
 from torch import nn
 import  torch.nn.functional as F
 from torch.utils.data import Dataset
@@ -23,8 +23,17 @@ class IMG_Dataset(Dataset):
             transforms: image transformation to be applied
         """
         self.dir = data_dir
+        self.img_set = None
+        if 'data' not in self.dir: # if new version
+            self.img_set = torch.load(data_dir)
         self.gt = torch.load(label_path)
         self.transforms = transforms
+        if 'data' not in self.dir: # if new version, remove ToTensor() from the transform list
+            self.transforms = []
+            for t in transforms.transforms:
+                if not isinstance(t, torchvision.transforms.ToTensor):
+                    self.transforms.append(t)
+            self.transforms = torchvision.transforms.Compose(self.transforms)
 
         self.num_classes = num_classes
         self.shift = shift
@@ -39,7 +48,12 @@ class IMG_Dataset(Dataset):
 
     def __getitem__(self, idx):
         idx = int(idx)
-        img = Image.open(os.path.join(self.dir, '%d.png' % idx))
+        
+        if self.img_set is not None: # if new version
+            img = self.img_set[idx]
+        else: # if old version
+            img = Image.open(os.path.join(self.dir, '%d.png' % idx))
+        
         if self.transforms is not None:
             img = self.transforms(img)
 
@@ -388,7 +402,10 @@ def unpack_poisoned_train_set(args, batch_size=128, shuffle=False, data_transfor
 
     poison_set_dir = supervisor.get_poison_set_dir(args)
 
-    poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
+    if os.path.exists(os.path.join(poison_set_dir, 'data')): # if old version
+        poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
+    if os.path.exists(os.path.join(poison_set_dir, 'imgs')): # if new version
+        poisoned_set_img_dir = os.path.join(poison_set_dir, 'imgs')
     poisoned_set_label_path = os.path.join(poison_set_dir, 'labels')
     poison_indices_path = os.path.join(poison_set_dir, 'poison_indices')
     cover_indices_path = os.path.join(poison_set_dir, 'cover_indices') # for adaptive attacks

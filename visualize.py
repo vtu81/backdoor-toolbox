@@ -168,7 +168,10 @@ else:
 arch = config.arch[args.dataset]
 # Set up Poisoned Set
 poison_set_dir = supervisor.get_poison_set_dir(args)
-poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
+if os.path.exists(os.path.join(poison_set_dir, 'data')): # if old version
+    poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
+if os.path.exists(os.path.join(poison_set_dir, 'imgs')): # if new version
+    poisoned_set_img_dir = os.path.join(poison_set_dir, 'imgs')
 poisoned_set_label_path = os.path.join(poison_set_dir, 'labels')
 poison_indices_path = os.path.join(poison_set_dir, 'poison_indices')
 
@@ -216,11 +219,11 @@ if (hasattr(args, 'model_path') and args.model_path is not None) or (hasattr(arg
     alias_list.append('assigned')
 
 else:
-    args.no_aug = True
-    #path = os.path.join(poison_set_dir, 'full_base_no_aug.pt') #
-    path = supervisor.get_model_dir(args)
-    model_list.append(path)
-    alias_list.append(supervisor.get_model_name(args))
+    # args.no_aug = True
+    # #path = os.path.join(poison_set_dir, 'full_base_no_aug.pt') #
+    # path = supervisor.get_model_dir(args)
+    # model_list.append(path)
+    # alias_list.append(supervisor.get_model_name(args))
 
     args.no_aug = False
     #path = os.path.join(poison_set_dir, 'full_base_aug.pt') #supervisor.get_model_dir(args)

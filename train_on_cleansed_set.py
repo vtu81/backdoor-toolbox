@@ -38,7 +38,7 @@ parser.add_argument('-seed', type=int, required=False, default=default_args.seed
 
 args = parser.parse_args()
 os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % args.devices
-tools.setup_seed(args.seed)
+# tools.setup_seed(args.seed)
 
 if args.trigger is None:
     if args.dataset != 'imagenette' and args.dataset != 'imagenet':
@@ -147,7 +147,10 @@ else:
 
 if args.dataset != 'ember':
     poison_set_dir = supervisor.get_poison_set_dir(args)
-    poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
+    if os.path.exists(os.path.join(poison_set_dir, 'data')): # if old version
+        poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
+    if os.path.exists(os.path.join(poison_set_dir, 'imgs')): # if new version
+        poisoned_set_img_dir = os.path.join(poison_set_dir, 'imgs')
     poisoned_set_label_path = os.path.join(poison_set_dir, 'labels')
     poisoned_set = tools.IMG_Dataset(data_dir=poisoned_set_img_dir,
                                          label_path=poisoned_set_label_path, transforms=data_transform_aug)

@@ -42,6 +42,7 @@ class poison_generator():
         poison_indices = all_target_indices[:num_poison]
         poison_indices.sort() # increasing order
 
+        img_set = []
         label_set = []
         pt = 0
         for i in range(self.num_img):
@@ -52,15 +53,18 @@ class poison_generator():
                 img = torch.clamp(img,0.0,1.0)
                 pt+=1
 
-            img_file_name = '%d.png' % i
-            img_file_path = os.path.join(self.path, img_file_name)
-            save_image(img, img_file_path)
+            # img_file_name = '%d.png' % i
+            # img_file_path = os.path.join(self.path, img_file_name)
+            # save_image(img, img_file_path)
             #print('[Generate Poisoned Set] Save %s' % img_file_path)
+            
+            img_set.append(img.unsqueeze(0))
             label_set.append(gt)
 
+        img_set = torch.cat(img_set, dim=0)
         label_set = torch.LongTensor(label_set)
         print(poison_indices)
-        return poison_indices, label_set
+        return img_set, poison_indices, label_set
 
 
 

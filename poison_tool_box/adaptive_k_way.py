@@ -61,6 +61,7 @@ class poison_generator():
         ct = 0
         cnt = 0
 
+        img_set = []
         poison_id = []
         cover_id = []
 
@@ -90,13 +91,16 @@ class poison_generator():
                         break
                 pt+=1
 
-            img_file_name = '%d.png' % cnt
-            img_file_path = os.path.join(self.path, img_file_name)
-            save_image(img, img_file_path)
+            # img_file_name = '%d.png' % cnt
+            # img_file_path = os.path.join(self.path, img_file_name)
+            # save_image(img, img_file_path)
             # print('[Generate Poisoned Set] Save %s' % img_file_path)
+            
+            img_set.append(img.unsqueeze(0))
             label_set.append(gt)
             cnt+=1
 
+        img_set = torch.cat(img_set, dim=0)
         label_set = torch.LongTensor(label_set)
         poison_indices = poison_id
         cover_indices = cover_id
@@ -109,9 +113,9 @@ class poison_generator():
             img[0, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][0]
             img[1, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][1]
             img[2, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][2]
-        save_image(img, os.path.join(self.path[:-4], 'demo.png'))
+        save_image(img, os.path.join(self.path, 'demo.png'))
 
-        return poison_indices, cover_indices, label_set
+        return img_set, poison_indices, cover_indices, label_set
 
 
 class poison_transform():

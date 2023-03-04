@@ -179,6 +179,7 @@ class poison_generator():
         cover_indices = id_set[num_poison:num_poison + num_cover]  # use **non-overlapping** images to cover
         cover_indices.sort()
 
+        img_set = []
         label_set = []
         pt = 0
         ct = 0
@@ -212,13 +213,16 @@ class poison_generator():
                         break
                 pt += 1
 
-            img_file_name = '%d.png' % cnt
-            img_file_path = os.path.join(self.path, img_file_name)
-            save_image(img, img_file_path)
+            # img_file_name = '%d.png' % cnt
+            # img_file_path = os.path.join(self.path, img_file_name)
+            # save_image(img, img_file_path)
             # print('[Generate Poisoned Set] Save %s' % img_file_path)
+            
+            img_set.append(img.unsqueeze(0))
             label_set.append(gt)
             cnt += 1
 
+        img_set = torch.cat(img_set, dim=0)
         label_set = torch.LongTensor(label_set)
         poison_indices = poison_id
         cover_indices = cover_id
@@ -229,9 +233,9 @@ class poison_generator():
         img, gt = self.dataset[0]
         for j in range(k):
             img = img + self.alphas[j] * self.trigger_masks[j] * (self.trigger_marks[j] - img)
-        save_image(img, os.path.join(self.path[:-4], 'demo.png'))
+        save_image(img, os.path.join(self.path, 'demo.png'))
 
-        return poison_indices, cover_indices, label_set
+        return img_set, poison_indices, cover_indices, label_set
 
 
 class poison_transform():

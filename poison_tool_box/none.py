@@ -19,19 +19,22 @@ class poison_generator():
         torch.manual_seed(poison_seed)
         random.seed(poison_seed)
 
-
+        img_set = []
         label_set = []
 
         for i in range(self.num_img):
             img, gt = self.dataset[i]
-            img_file_name = '%d.png' % i
-            img_file_path = os.path.join(self.path, img_file_name)
-            save_image(img, img_file_path)
+            # img_file_name = '%d.png' % i
+            # img_file_path = os.path.join(self.path, img_file_name)
+            # save_image(img, img_file_path)
+            
+            img_set.append(img.unsqueeze(0))
             label_set.append(gt)
 
+        img_set = torch.cat(img_set, dim=0)
         label_set = torch.LongTensor(label_set)
 
-        return [], label_set
+        return img_set, [], label_set
 
 
 
