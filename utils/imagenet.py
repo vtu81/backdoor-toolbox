@@ -8,20 +8,25 @@ from PIL import Image
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
+import config
 
 
 
 target_class = 0
 
 triggers= {
-    'badnet': 'badnet_high_res.png',
-    'blend' : 'random_224.png',
-    'trojan' : 'xxx.png',
+    # 'badnet': 'badnet_patch.png',
+    'badnet': 'badnet_patch_21x21.png',
+    # 'blend' : 'random_224.png',
+    'blend' : 'random_256.png',
+    'trojan' : 'trojan_watermark.jpeg',
     'none': ''
 }
 
 #test_set_labels = 'data/imagenet/ILSVRC2012_validation_ground_truth.txt'
-test_set_labels = '/shadowdata/xiangyu/imagenet_256/val_labels'
+# test_set_labels = '/shadowdata/xiangyu/imagenet_256/val_labels'
+# test_set_labels = 'data/imagenet/val_labels'
+test_set_labels = None
 #'/shadowdata/xiangyu/imagenet_256/ILSVRC2012_validation_ground_truth.txt'
 #'data/imagenet/ILSVRC2012_validation_ground_truth.txt'
 
@@ -30,6 +35,7 @@ test_set_labels = '/shadowdata/xiangyu/imagenet_256/val_labels'
 
 transform_resize = transforms.Compose([
             transforms.Resize(size=[256, 256]),
+            # transforms.Resize(size=256),
             transforms.ToTensor(),
 ])
 
@@ -163,8 +169,8 @@ class imagenet_dataset(Dataset):
 
         img = transform_resize(Image.open(img_path).convert("RGB")) # 256 x 256, tensor
 
-        if self.poison_transform is not None: # appled to test set for testing ASR
-            img, label = self.poison_transform(img, label)
+        if self.poison_transform is not None: # applied to test set for testing ASR
+            img, label = self.poison_transform.transform(img, label)
 
 
         if self.scale_for_ct: # for confusion training, we scale samples to 64 x 64 to speedup detection
@@ -191,7 +197,9 @@ def get_poison_transform_for_imagenet(poison_type):
         return badnet_transform(trigger, target_class=target_class)
 
     elif poison_type == 'trojan':
-        raise NotImplementedError('%s is not implemented on ImageNet' % poison_type)
+        trigger = transform_resize(Image.open(trigger_path).convert("RGB"))
+        trigger_mask = torch.logical_or(torch.logical_or(trigger[0] > 0, trigger[1] > 0), trigger[2] > 0).float()
+        return trojan_transform(trigger, trigger_mask, target_class=target_class)
 
     elif poison_type == 'blend':
         trigger = transform_resize(Image.open(trigger_path).convert("RGB"))
@@ -204,9 +212,7 @@ def get_poison_transform_for_imagenet(poison_type):
         raise NotImplementedError('%s is not implemented on ImageNet' % poison_type)
 
 
-
 class badnet_transform():
-
     def __init__(self, trigger, target_class = 0, img_size = 256):
         self.img_size = img_size
         self.trigger = trigger
@@ -216,7 +222,6 @@ class badnet_transform():
 
     def transform(self, data, label):
         # transform clean samples to poison samples
-
         upper_pos = 16
         lower_pos = 240
 
@@ -240,6 +245,20 @@ class blend_transform():
         return data, self.target_class
 
 
+class trojan_transform():
+
+    def __init__(self, trigger, mask, target_class=0, alpha=0.2, img_size=256):
+        self.img_size = img_size
+        self.trigger = trigger
+        self.mask = mask
+        self.target_class = target_class  # by default : target_class = 0
+        self.alpha = alpha
+
+    def transform(self, data, label):
+        data = (1-self.mask) * data + self.mask*( (1-self.alpha)*data + self.alpha*self.trigger )
+            #(1 - self.alpha) * data + self.alpha * self.trigger
+        return data, self.target_class
+
 
 class none_transform_batch():
     def __init__(self):
@@ -250,10 +269,13 @@ class none_transform_batch():
         return data, labels
 
 
-transform_resize = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Resize(size=[256, 256]),
-    ])
+
+
+
+# transform_resize = transforms.Compose([
+#         transforms.ToTensor(),
+#         transforms.Resize(size=[256, 256]),
+#     ])
 
 
 """
@@ -336,9 +358,12 @@ if __name__ == "__main__":
     #print('train_set_size:', len(train_set))
     #print('test_set_size:', len(test_set))
 
-    root_path = '/shadowdata/xiangyu/imagenet_256/'
-    label_maps = os.path.join(root_path, 'imagenet_class_index.json')
-    val_labels = os.path.join(root_path, 'ILSVRC2012_val_labels.json')
+    # root_path = '/shadowdata/xiangyu/imagenet_256/'
+    root_path = config.imagenet_dir
+    # label_maps = os.path.join(root_path, 'imagenet_class_index.json')
+    # val_labels = os.path.join(root_path, 'ILSVRC2012_val_labels.json')
+    label_maps = 'data/imagenet/imagenet_class_index.json'
+    val_labels = 'data/imagenet/ILSVRC2012_val_labels.json'
 
     class_to_id = dict()
 

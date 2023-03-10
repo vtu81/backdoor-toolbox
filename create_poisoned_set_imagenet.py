@@ -6,6 +6,7 @@ import torchvision.transforms as transforms
 import random
 from PIL import Image
 from torchvision.utils import save_image
+import config
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-poison_type', type=str,  required=False,
@@ -14,10 +15,15 @@ parser.add_argument('-poison_type', type=str,  required=False,
 parser.add_argument('-poison_rate', type=float,  required=False,
                     choices=default_args.parser_choices['poison_rate'],
                     default=default_args.parser_default['poison_rate'])
+parser.add_argument('-trigger', type=str, required=False,
+                    default=None)
 args = parser.parse_args()
 args.dataset = 'imagenet'
 args.alpha= 0.2
 tools.setup_seed(0)
+
+if args.trigger is None:
+    args.trigger = imagenet.triggers[args.poison_type]
 
 if args.poison_type not in ['none', 'badnet', 'trojan', 'blend']:
     raise NotImplementedError('%s is not implemented on ImageNet' % args.poison_type)
@@ -48,12 +54,16 @@ poison_indices = id_set[:num_poison]
 poison_indices.sort() # increasing order
 
 
-train_set_dir = '/shadowdata/xiangyu/imagenet_256/train'
+# train_set_dir = '/shadowdata/xiangyu/imagenet_256/train'
+# train_set_dir = '/scratch/gpfs/DATASETS/imagenet/ilsvrc_2012_classification_localization/train'
+train_set_dir = os.path.join(config.imagenet_dir, "train")
 
 classes, class_to_idx, idx_to_class = imagenet.find_classes(train_set_dir)
 num_imgs, img_id_to_path, img_labels = imagenet.assign_img_identifier(train_set_dir, classes)
 
 transform_to_tensor = transforms.Compose([
+    transforms.Resize((256, 256)),
+    # transforms.Resize(256),
     transforms.ToTensor(),
 ])
 

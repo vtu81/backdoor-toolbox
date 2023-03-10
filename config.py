@@ -1,13 +1,14 @@
 from utils import resnet, vgg, mobilenetv2, ember_nn, gtsrb_cnn, wresnet
 from utils import supervisor
 from utils import tools
-import torch
+import torch, torchvision
 from torchvision import transforms
 import os
 
 
 data_dir = './data' # defaul clean dataset directory
 triggers_dir = './triggers' # default triggers directory
+imagenet_dir = '/scratch/gpfs/DATASETS/imagenet/ilsvrc_2012_classification_localization' # ImageNet dataset directory (USE YOUR OWN!)
 target_class = {
     'cifar10' : 0,
     'gtsrb' : 2,
@@ -50,7 +51,8 @@ arch = {
     #resnet.ResNet18,
     'imagenette': resnet.ResNet18,
     'ember': ember_nn.EmberNN,
-    'imagenet' : resnet.ResNet18,
+    # 'imagenet' : resnet.ResNet18,
+    'imagenet' : torchvision.models.resnet18,
     # 'abl':  resnet.ResNet18,
     'abl':  wresnet.WideResNet,
 }

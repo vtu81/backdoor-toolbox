@@ -24,6 +24,8 @@ parser.add_argument('-ember_options', type=str, required=False,
 parser.add_argument('-alpha', type=float, required=False,
                     default=default_args.parser_default['alpha'])
 parser.add_argument('-test_alpha', type=float, required=False, default=None)
+parser.add_argument('-resume', type=int, required=False, default=0)
+parser.add_argument('-resume_from_meta_info', default=False, action='store_true')
 parser.add_argument('-trigger', type=str, required=False,
                     default=None)
 parser.add_argument('-no_aug', default=False, action='store_true')
@@ -59,6 +61,12 @@ if args.poison_type == 'badnet_all_to_all':
     all_to_all = True
 
 
+if args.dataset != 'ember':
+    model_path = supervisor.get_model_dir(args)
+else:
+    model_path = os.path.join('poisoned_train_set', 'ember', args.ember_options, 'backdoored_model.pt')
+
+
 # tools.setup_seed(args.seed)
 
 if args.log:
@@ -69,7 +77,10 @@ if args.log:
     out_path = os.path.join(out_path, 'base')
     if not os.path.exists(out_path): os.mkdir(out_path)
     out_path = os.path.join(out_path, '%s_%s.out' % (supervisor.get_dir_core(args, include_poison_seed=config.record_poison_seed), 'no_aug' if args.no_aug else 'aug'))
-    fout = open(out_path, 'w')
+    if args.resume > 0 or args.resume_from_meta_info:
+        fout = open(out_path, 'a')
+    else:
+        fout = open(out_path, 'w')
     ferr = open('/dev/null', 'a')
     sys.stdout = fout
     sys.stderr = ferr
@@ -225,13 +236,8 @@ elif args.dataset == 'imagenet':
 
     poison_indices = torch.load(poison_indices_path)
 
-    root_dir = '/shadowdata/xiangyu/imagenet_256/'
-    #'./data/imagenet/'
-    #'/shadowdata/xiangyu/imagenet_256/'
-    #train_set_dir = './data/imagenet/train'
-    #test_set_dir = './data/imagenet/val'
-    train_set_dir = os.path.join(root_dir, 'train')
-    test_set_dir = os.path.join(root_dir, 'val')
+    train_set_dir = os.path.join(config.imagenet_dir, 'train')
+    test_set_dir = os.path.join(config.imagenet_dir, 'val')
 
     from utils import imagenet
     #imagenet_ffcv
@@ -376,6 +382,9 @@ exit(0)"""
 
 
 # Train Code
+print(f"Will save to '{model_path}'.")
+if os.path.exists(model_path):
+    print(f"Model '{model_path}' already exists!")
 
 if args.dataset != 'ember':
     model = arch(num_classes=num_classes)
@@ -383,25 +392,34 @@ else:
     model = arch()
 
 
+# Check if need to resume from the checkpoint
+if os.path.exists(os.path.join(poison_set_dir, "meta_info_seed={}".format(args.seed))):
+    meta_info = torch.load(os.path.join(poison_set_dir, "meta_info_seed={}".format(args.seed)))
+else:
+    meta_info = dict()
+    meta_info['epoch'] = 0
+
+if args.resume > 0:
+    meta_info['epoch'] = args.resume
+    if os.path.exists(model_path):
+        model.load_state_dict(torch.load(model_path))
+elif args.resume_from_meta_info:
+    args.resume = meta_info['epoch']
+    if os.path.exists(model_path):
+        model.load_state_dict(torch.load(model_path))
+else:
+    meta_info['epoch'] = 0
+
 milestones = milestones.tolist()
 model = nn.DataParallel(model)
 model = model.cuda()
 
-
 if args.dataset != 'ember':
-    print(f"Will save to '{supervisor.get_model_dir(args)}'.")
-    if os.path.exists(supervisor.get_model_dir(args)):
-        print(f"Model '{supervisor.get_model_dir(args)}' already exists!")
-
     if args.dataset == 'imagenet':
         criterion = nn.CrossEntropyLoss().cuda()
     else:
         criterion = nn.CrossEntropyLoss().cuda()
 else:
-    model_path = os.path.join('poisoned_train_set', 'ember', args.ember_options, 'backdoored_model.pt')
-    print(f"Will save to '{model_path}'.")
-    if os.path.exists(model_path):
-        print(f"Model '{model_path}' already exists!")
     criterion = nn.BCELoss().cuda()
 
 optimizer = torch.optim.SGD(model.parameters(), learning_rate, momentum=momentum, weight_decay=weight_decay)
@@ -425,26 +443,38 @@ if args.dataset == 'imagenet':
 scaler = GradScaler()
 for epoch in range(1, epochs+1):  # train backdoored base model
     start_time = time.perf_counter()
-    
+
+    # Skip to the checkpointed epoch
+    if epoch <= args.resume:
+        scheduler.step()
+        continue
+
     # Train
     model.train()
     preds = []
     labels = []
     for data, target in tqdm(poisoned_set_loader):
 
-        data = data.cuda(non_blocking=True)
-        target = target.cuda(non_blocking=True)
-
+        optimizer.zero_grad()
         data, target = data.cuda(), target.cuda()
-        optimizer.zero_grad(set_to_none=True)
+        output = model(data)
+        loss = criterion(output, target)
+        loss.backward()
+        optimizer.step()
+        
+        # data = data.cuda(non_blocking=True)
+        # target = target.cuda(non_blocking=True)
 
-        with autocast():
-            output = model(data)
-            loss = criterion(output, target)
+        # data, target = data.cuda(), target.cuda()
+        # optimizer.zero_grad(set_to_none=True)
 
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-        scaler.update()
+        # with autocast():
+        #     output = model(data)
+        #     loss = criterion(output, target)
+
+        # scaler.scale(loss).backward()
+        # scaler.step(optimizer)
+        # scaler.update()
 
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
@@ -458,23 +488,24 @@ for epoch in range(1, epochs+1):  # train backdoored base model
         # if epoch % 5 == 0:
             if args.dataset == 'imagenet':
                 tools.test_imagenet(model=model, test_loader=test_set_loader,
-                                    test_backdoor_loader=test_set_backdoor_loader)
-                torch.save(model.module.state_dict(), supervisor.get_model_dir(args))
+                                    test_backdoor_loader=test_set_backdoor_loader if args.poison_type != 'none' else None)
+                torch.save(model.module.state_dict(), model_path)
             else:
-                tools.test(model=model, test_loader=test_set_loader, poison_test=True,
+                tools.test(model=model, test_loader=test_set_loader, poison_test=True if args.poison_type != 'none' else False,
                            poison_transform=poison_transform, num_classes=num_classes, source_classes=source_classes, all_to_all=all_to_all)
-                torch.save(model.module.state_dict(), supervisor.get_model_dir(args))
+                torch.save(model.module.state_dict(), model_path)
     else:
 
         tools.test_ember(model=model, test_loader=test_set_loader,
                              backdoor_test_loader=backdoor_test_set_loader)
         torch.save(model.module.state_dict(), model_path)
     print("")
+    
+    meta_info['epoch'] = epoch
+    torch.save(meta_info, os.path.join(poison_set_dir, "meta_info_seed={}".format(args.seed)))
 
-if args.dataset != 'ember':
-    torch.save(model.module.state_dict(), supervisor.get_model_dir(args))
-else:
-    torch.save(model.module.state_dict(), model_path)
+
+torch.save(model.module.state_dict(), model_path)
 
 if args.poison_type == 'none':
     if args.no_aug:
