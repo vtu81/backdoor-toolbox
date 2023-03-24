@@ -175,7 +175,7 @@ print("Evaluating model '{}'...".format(model_path))
 # Set Up Test Set for Debug & Evaluation
 if args.dataset != 'imagenet':
     test_set_dir = os.path.join('clean_set', args.dataset, 'test_split')
-    test_set_img_dir = os.path.join(test_set_dir, 'imgs')
+    test_set_img_dir = os.path.join(test_set_dir, 'data')
     test_set_label_path = os.path.join(test_set_dir, 'labels')
     test_set = tools.IMG_Dataset(data_dir=test_set_img_dir,
                                 label_path=test_set_label_path, transforms=data_transform)
