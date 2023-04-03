@@ -1,6 +1,6 @@
-# Backdoor Toolbox
+![assets/backdoor-toolbox.gif](assets/backdoor-toolbox.gif)
 
-**A compact toolbox for backdoor attacks and defenses.**
+**Backdoor-Toolbox** is a compact toolbox that integrates various backdoor attacks and defenses. We designed our toolbox with a **shallow** function call stack, which makes it easy to **read** and **transplant** by other researchers. Most codes are adapted from the original attack/defense implementation. This repo is still under heavy updates. Welcome to make your contributions for attacks/defenses that have not yet been implemented!
 
 ## Features
 
