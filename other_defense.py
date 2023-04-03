@@ -72,6 +72,7 @@ if args.defense == 'NC':
         init_cost=1e-3,
         patience=5,
         attack_succ_threshold=0.99,
+        oracle=False,
         )
     defense.detect()
 elif args.defense == 'STRIP':

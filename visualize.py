@@ -123,49 +123,18 @@ class spectral_visualizer:
 
 
 if args.dataset == 'cifar10':
-
     num_classes = 10
-    if args.no_normalize:
-        data_transform = transforms.Compose([
-                transforms.ToTensor(),
-        ])
-    else:
-        data_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
-        ])
-
 elif args.dataset == 'gtsrb':
-
     num_classes = 43
-    if args.no_normalize:
-        data_transform = transforms.Compose([
-            transforms.ToTensor(),
-        ])
-    else:
-        data_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
-        ])
-
 elif args.dataset == 'imagenette':
-
     num_classes = 10
-    if args.no_normalize:
-        data_transform = transforms.Compose([
-            transforms.ToTensor(),
-        ])
-    else:
-        data_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
-
 else:
     raise NotImplementedError('<Unimplemented Dataset> %s' % args.dataset)
 
+data_transform_aug, data_transform, trigger_transform, normalizer, denormalizer = supervisor.get_transforms(args)
 
-arch = config.arch[args.dataset]
+
+arch = supervisor.get_arch(args)
 # Set up Poisoned Set
 poison_set_dir = supervisor.get_poison_set_dir(args)
 if os.path.exists(os.path.join(poison_set_dir, 'data')): # if old version

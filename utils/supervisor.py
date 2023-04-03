@@ -28,34 +28,42 @@ def get_cleansed_set_indices_dir(args):
     else:
         return os.path.join(poison_set_dir, f'cleansed_set_indices_other_{args.cleanser}_seed={args.seed}')
 
-def get_model_name(args, cleanse=False):
+def get_model_name(args, cleanse=False, defense=False):
     # `args.model_path` > `args.model` > by default 'full_base'
     if hasattr(args, 'model_path') and args.model_path is not None:
         model_name = args.model_path
     elif hasattr(args, 'model') and args.model is not None:
         model_name = args.model
     elif args.poison_type in ['trojannn']:
-        model_name = f'{args.poison_type}_seed={args.seed}.pt'
+        model_name = f'{args.dataset}_{args.poison_type}_seed={args.seed}.pt'
+    elif args.poison_type == 'BadEncoder':
+        if args.dataset == 'gtsrb':
+            model_name = 'BadEncoder_cifar2gtsrb.pth'
+        else:
+            raise NotImplementedError()
     else:
         if args.no_aug:
             model_name = f'full_base_no_aug_seed={args.seed}.pt'
         else:
             model_name = f'full_base_aug_seed={args.seed}.pt'
         
-        if cleanse and hasattr(args, 'cleanser') and args.cleanser is not None:
-            model_name = f"cleansed_{args.cleanser}_{model_name}"
+    
+    if cleanse and hasattr(args, 'cleanser') and args.cleanser is not None:
+        model_name = f"cleansed_{args.cleanser}_{model_name}"
+    elif defense and hasattr(args, 'defense') and args.defense is not None:
+        model_name = f"defended_{args.defense}_{model_name}"
     return model_name
 
-def get_model_dir(args, cleanse=False):
+def get_model_dir(args, cleanse=False, defense=False):
     if hasattr(args, 'model_path') and args.model_path is not None:
         return args.model_path
     else:
-        return f"{get_poison_set_dir(args)}/{get_model_name(args, cleanse=cleanse)}"
+        return f"{get_poison_set_dir(args)}/{get_model_name(args, cleanse=cleanse, defense=defense)}"
 
 def get_dir_core(args, include_model_name=False, include_poison_seed=False):
     ratio = '%.3f' % args.poison_rate
     # ratio = '%.1f' % (args.poison_rate * 100) + '%'
-    if args.poison_type in ['trojannn']:
+    if args.poison_type in ['trojannn', 'BadEncoder']:
         dir_core = args.poison_type
     elif args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
         blend_alpha = '%.3f' % args.alpha
@@ -75,13 +83,13 @@ def get_dir_core(args, include_model_name=False, include_poison_seed=False):
     if include_poison_seed:
         dir_core = f'{dir_core}_poison_seed={config.poison_seed}'
     if config.record_model_arch:
-        dir_core = f'{dir_core}_arch={config.arch[args.dataset].__name__}'
+        dir_core = f'{dir_core}_arch={get_arch(args).__name__}'
     return dir_core
 
 def get_poison_set_dir(args):
     ratio = '%.3f' % args.poison_rate
     # ratio = '%.1f' % (args.poison_rate * 100) + '%'
-    if args.poison_type in ['trojannn']:
+    if args.poison_type in ['trojannn', 'BadEncoder']:
         poison_set_dir = 'models'
         return poison_set_dir
     elif args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
@@ -98,8 +106,160 @@ def get_poison_set_dir(args):
         poison_set_dir = 'poisoned_train_set/%s/%s_%s' % (args.dataset, args.poison_type, ratio)
     
     if config.record_poison_seed: poison_set_dir = f'{poison_set_dir}_poison_seed={config.poison_seed}' # debug
-    if config.record_model_arch: poison_set_dir = f'{poison_set_dir}_arch={config.arch[args.dataset].__name__}'
+    if config.record_model_arch: poison_set_dir = f'{poison_set_dir}_arch={get_arch(args).__name__}'
     return poison_set_dir
+
+def get_arch(args):
+    if args.poison_type == 'BadEncoder':
+        if args.dataset == 'gtsrb':
+            from utils.BadEncoder_model import CIFAR2GTSRB
+            return CIFAR2GTSRB
+        else: raise NotImplementedError
+    else:
+        return config.arch[args.dataset]
+    
+def get_transforms(args):
+    if args.dataset == 'gtsrb':
+        if args.no_normalize:
+            data_transform_aug = transforms.Compose([
+                transforms.RandomRotation(15),
+                transforms.Resize((32, 32)),
+                transforms.ToTensor(),
+            ])
+            data_transform = transforms.Compose([
+                transforms.Resize((32, 32)),
+                transforms.ToTensor()
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+            ])
+            normalizer = transforms.Compose([])
+            denormalizer = transforms.Compose([])
+        else:
+            data_transform_aug = transforms.Compose([
+                transforms.RandomRotation(15),
+                transforms.Resize((32, 32)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
+            ])
+            data_transform = transforms.Compose([
+                transforms.Resize((32, 32)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
+            ])
+            normalizer = transforms.Compose([
+                transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
+            ])
+            denormalizer = transforms.Compose([
+                transforms.Normalize((-0.3337 / 0.2672, -0.3064 / 0.2564, -0.3171 / 0.2629),
+                                        (1.0 / 0.2672, 1.0 / 0.2564, 1.0 / 0.2629)),
+            ])
+        
+        if args.poison_type == 'BadEncoder': # use CIFAR10's data transform for BadEncoder
+            data_transform_aug = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomCrop(32, 4),
+                transforms.ToTensor(),
+                transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
+            ])
+            data_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
+            ])
+            normalizer = transforms.Compose([
+                transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
+            ])
+            denormalizer = transforms.Compose([
+                transforms.Normalize([-0.4914/0.247, -0.4822/0.243, -0.4465/0.261], [1/0.247, 1/0.243, 1/0.261])
+            ])
+            
+    elif args.dataset == 'cifar10':
+        if args.no_normalize:
+            data_transform_aug = transforms.Compose([
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomCrop(32, 4),
+                    transforms.ToTensor()
+            ])
+            data_transform = transforms.Compose([
+                transforms.ToTensor()
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+            ])
+            normalizer = transforms.Compose([])
+            denormalizer = transforms.Compose([])
+        else:
+            data_transform_aug = transforms.Compose([
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomCrop(32, 4),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
+            ])
+            data_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
+            ])
+            normalizer = transforms.Compose([
+                transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
+            ])
+            denormalizer = transforms.Compose([
+                transforms.Normalize([-0.4914/0.247, -0.4822/0.243, -0.4465/0.261], [1/0.247, 1/0.243, 1/0.261])
+            ])
+    elif args.dataset == 'imagenette':
+        if args.no_normalize:
+            data_transform_aug = transforms.Compose([
+                transforms.RandomCrop(224, 4),
+                transforms.RandomHorizontalFlip(),    
+                transforms.ColorJitter(brightness=0.4, contrast=0.4,saturation=0.4),
+                transforms.ToTensor(),
+            ])
+            data_transform = transforms.Compose([
+                transforms.ToTensor(),
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+            ])
+            normalizer = transforms.Compose([])
+            denormalizer = transforms.Compose([])
+        else:
+            data_transform_aug = transforms.Compose([
+                transforms.RandomCrop(224, 4),
+                transforms.RandomHorizontalFlip(),    
+                transforms.ColorJitter(brightness=0.4, contrast=0.4,saturation=0.4),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+            data_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+            normalizer = transforms.Compose([
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+            denormalizer = transforms.Compose([
+                transforms.Normalize([-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225], [1 / 0.229, 1 / 0.224, 1 / 0.225])
+            ])
+    elif args.dataset == 'imagenet' or args.dataset == 'ember':
+        data_transform_aug = data_transform = trigger_transform = normalizer = denormalizer = None
+    else: raise NotImplementedError()
+    
+    return data_transform_aug, data_transform, trigger_transform, normalizer, denormalizer
 
 def get_poison_transform(poison_type, dataset_name, target_class, source_class=1, cover_classes=[5,7],
                          is_normalized_input = False, trigger_transform=None,
@@ -353,6 +513,35 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
         
         from other_attacks_tool_box import trojannn
         poison_transform = trojannn.poison_transform(img_size=img_size, trigger=trigger, mask = trigger_mask,
+                                                    target_class=target_class)
+        return poison_transform
+
+    elif poison_type == 'BadEncoder':
+        if dataset_name not in ['gtsrb']:
+            raise NotImplementedError()
+        
+        if args.dataset == 'gtsrb':
+            trigger_name = "BadEncoder_32.png"
+        trigger_path = os.path.join(config.triggers_dir, trigger_name)
+        print('trigger : ', trigger_path)
+        trigger = Image.open(trigger_path).convert("RGB")
+
+        trigger_mask_path = os.path.join(config.triggers_dir, f'mask_{trigger_name}.png')
+
+        if os.path.exists(trigger_mask_path):  # if there explicitly exists a trigger mask (with the same name)
+            trigger_mask = Image.open(trigger_mask_path).convert("RGB")
+            trigger_mask = transforms.ToTensor()(trigger_mask)[0]  # only use 1 channel
+        else:  # by default, all black pixels are masked with 0's
+            temp_trans = transforms.ToTensor()
+            trigger_map = temp_trans(trigger)
+            trigger_mask = torch.logical_or(torch.logical_or(trigger_map[0] > 0, trigger_map[1] > 0), trigger_map[2] > 0).float()
+
+        trigger = trigger_transform(trigger).cuda()
+        print('trigger_shape: ', trigger.shape)
+        trigger_mask = trigger_mask.cuda()
+        
+        from other_attacks_tool_box import BadEncoder
+        poison_transform = BadEncoder.poison_transform(img_size=img_size, trigger=trigger, mask = trigger_mask,
                                                     target_class=target_class)
         return poison_transform
 

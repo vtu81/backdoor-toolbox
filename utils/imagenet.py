@@ -16,10 +16,12 @@ target_class = 0
 
 triggers= {
     # 'badnet': 'badnet_patch.png',
-    'badnet': 'badnet_patch_21x21.png',
+    # 'badnet': 'badnet_patch_21x21.png',
+    'badnet': 'badnet_patch_9x9.png',
     # 'blend' : 'random_224.png',
-    'blend' : 'random_256.png',
-    'trojan' : 'trojan_watermark.jpeg',
+    # 'blend' : 'random_256.png',
+    'blend' : 'hellokitty_224.png',
+    'trojan' : 'trojan_watermark_224.png',
     'none': ''
 }
 
@@ -190,7 +192,8 @@ class imagenet_dataset(Dataset):
 
 def get_poison_transform_for_imagenet(poison_type):
 
-    trigger_path = 'triggers/%s' % triggers[poison_type]
+    trigger_name = triggers[poison_type]
+    trigger_path = os.path.join(config.triggers_dir, trigger_name)
 
     if poison_type == 'badnet':
         trigger = to_tensor(Image.open(trigger_path).convert("RGB"))
@@ -198,7 +201,14 @@ def get_poison_transform_for_imagenet(poison_type):
 
     elif poison_type == 'trojan':
         trigger = transform_resize(Image.open(trigger_path).convert("RGB"))
-        trigger_mask = torch.logical_or(torch.logical_or(trigger[0] > 0, trigger[1] > 0), trigger[2] > 0).float()
+        
+        trigger_mask_path = os.path.join(config.triggers_dir, 'mask_%s' % trigger_name)
+        if os.path.exists(trigger_mask_path):  # if there explicitly exists a trigger mask (with the same name)
+            trigger_mask = transform_resize(Image.open(trigger_mask_path).convert("RGB"))
+            trigger_mask = trigger_mask[0]  # only use 1 channel
+        else:  # by default, all black pixels are masked with 0's
+            trigger_mask = torch.logical_or(torch.logical_or(trigger[0] > 0, trigger[1] > 0), trigger[2] > 0).float()
+
         return trojan_transform(trigger, trigger_mask, target_class=target_class)
 
     elif poison_type == 'blend':
@@ -255,7 +265,8 @@ class trojan_transform():
         self.alpha = alpha
 
     def transform(self, data, label):
-        data = (1-self.mask) * data + self.mask*( (1-self.alpha)*data + self.alpha*self.trigger )
+        # data = (1-self.mask) * data + self.mask*( (1-self.alpha)*data + self.alpha*self.trigger )
+        data = (1 - self.mask) * data + self.mask * self.trigger
             #(1 - self.alpha) * data + self.alpha * self.trigger
         return data, self.target_class
 

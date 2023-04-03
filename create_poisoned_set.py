@@ -394,7 +394,7 @@ if args.poison_type in ['basic', 'badnet', 'blend', 'clean_label', 'refool',
             testset = datasets.CIFAR10(os.path.join(data_dir, 'cifar10'), train=False,
                                        download=True, transform=data_transform)
         else: raise(NotImplementedError)
-        poison_generator = SleeperAgent.poison_generator(img_size=img_size, model_arch=config.arch[args.dataset],
+        poison_generator = SleeperAgent.poison_generator(img_size=img_size, model_arch=supervisor.get_arch(args),
                                                          random_patch=False,
                                                          dataset=trainset, testset=testset,
                                                          poison_rate=args.poison_rate, path=poison_set_dir,

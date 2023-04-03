@@ -12,6 +12,7 @@ imagenet_dir = '/scratch/gpfs/DATASETS/imagenet/ilsvrc_2012_classification_local
 target_class = {
     'cifar10' : 0,
     'gtsrb' : 2,
+    # 'gtsrb' : 12, # BadEncoder
     'imagenette': 0,
     'imagenet' : 0
 }
@@ -41,6 +42,7 @@ trigger_default = {
     'none' : 'none',
     'badnet_all_to_all' : 'badnet_patch_32.png',
     'trojannn': 'none',
+    'BadEncoder': 'none',
     'trojan': 'trojan_square_32.png',
 }
 

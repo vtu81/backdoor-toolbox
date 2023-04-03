@@ -391,7 +391,7 @@ class ABL(BackdoorDefense):
         print('----------- Network Initialization --------------')
         # arch = config.arch['abl']
         # model_ascent = arch(depth=16, num_classes=self.num_classes, widen_factor=1, dropRate=0)
-        arch = config.arch[args.dataset]
+        arch = supervisor.get_arch(args)
         model_ascent = arch(num_classes=self.num_classes)
         model_ascent = model_ascent.cuda()
         print('finished model init...')
@@ -442,7 +442,7 @@ class ABL(BackdoorDefense):
         print('----------- Network Initialization --------------')
         # arch = config.arch['abl']
         # model_ascent = arch(depth=16, num_classes=self.num_classes, widen_factor=1, dropRate=0)
-        arch = config.arch[args.dataset]
+        arch = supervisor.get_arch(args)
         model_ascent = arch(num_classes=self.num_classes)
         self.load_checkpoint(model=model_ascent,
                             filepath=os.path.join(self.folder_path, 'abl_%s_isolation_epoch=%d_seed=%d.tar' % (supervisor.get_dir_core(self.args), self.isolation_epochs, self.args.seed)))

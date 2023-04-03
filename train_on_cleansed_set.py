@@ -130,7 +130,7 @@ elif args.dataset == 'gtsrb':
 elif args.dataset == 'ember':
 
     num_classes = 2
-    arch = config.arch[args.dataset]
+    arch = supervisor.get_arch(args)
     momentum = 0.9
     weight_decay = 1e-6
     epochs = 10
@@ -238,7 +238,7 @@ train_loader = torch.utils.data.DataLoader(
     train_set,
     batch_size=batch_size, shuffle=True, worker_init_fn=tools.worker_init, **kwargs)
 
-arch = config.arch[args.dataset]
+arch = supervisor.get_arch(args)
 
 
 if args.poison_type == 'TaCT':

@@ -27,12 +27,13 @@ import random
 class NC(BackdoorDefense):
     def __init__(self, args, epoch: int = 10, batch_size = 32,
                  init_cost: float = 1e-3, cost_multiplier: float = 1.5, patience: float = 10,
-                 attack_succ_threshold: float = 0.99, early_stop_threshold: float = 0.99):
+                 attack_succ_threshold: float = 0.99, early_stop_threshold: float = 0.99, oracle=False):
 
         super().__init__(args)
         
         self.args = args
         
+        self.oracle = oracle
         self.epoch: int = epoch
 
         self.init_cost = init_cost
@@ -71,25 +72,33 @@ class NC(BackdoorDefense):
         # self.suspect_class = torch.argmin(mask_norms).item()
         suspect_classes = []
         suspect_classes_anomaly_indices = []
-        for i in range(self.num_classes):
-            if mask_norms[i] > torch.median(mask_norms): continue
-            if anomaly_indices[i] > 2:
-                suspect_classes.append(i)
-                suspect_classes_anomaly_indices.append(anomaly_indices[i])
-        print("Suspect Classes:", suspect_classes)
-        if len(suspect_classes) > 0:
-            max_idx = torch.tensor(suspect_classes_anomaly_indices).argmax().item()
-            self.suspect_class = suspect_classes[max_idx]
-            print("Unlearning with reversed trigger from class %d" % self.suspect_class)
+        if self.oracle:
+            print("<Oracle> Unlearning with reversed trigger from class %d" % self.suspect_class)
             self.unlearn()
+        else:
+            for i in range(self.num_classes):
+                if mask_norms[i] > torch.median(mask_norms): continue
+                if anomaly_indices[i] > 2:
+                    suspect_classes.append(i)
+                    suspect_classes_anomaly_indices.append(anomaly_indices[i])
+            print("Suspect Classes:", suspect_classes)
+            if len(suspect_classes) > 0:
+                max_idx = torch.tensor(suspect_classes_anomaly_indices).argmax().item()
+                self.suspect_class = suspect_classes[max_idx]
+                print("Unlearning with reversed trigger from class %d" % self.suspect_class)
+                self.unlearn()
 
     def get_potential_triggers(self):#-> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         mark_list, mask_list, loss_list = [], [], []
         # todo: parallel to avoid for loop
         file_path = os.path.normpath(os.path.join(
             self.folder_path, 'neural_cleanse_%s.npz' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed)))
-        for label in range(self.num_classes):
-        # for label in [self.target_class]:
+        
+        if self.oracle:
+            candidate_classes = [self.target_class]
+        else:
+            candidate_classes = range(self.num_classes)
+        for label in candidate_classes:
             print('Class: %d/%d' % (label + 1, self.num_classes))
             mark, mask, loss = self.remask(label)
             mark_list.append(mark)
@@ -305,6 +314,14 @@ class NC(BackdoorDefense):
                 transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
             ])
             lr = 0.001
+            
+            if self.args.poison_type == 'BadEncoder':
+                data_transform_aug = transforms.Compose([
+                    transforms.RandomHorizontalFlip(),
+                    # transforms.RandomCrop(32, 4),
+                    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
+                ])
+                lr = 0.0001
         else:
             raise NotImplementedError()
         train_data = DatasetCL(0.1, full_dataset=full_train_set, transform=data_transform_aug, poison_ratio=0.2, mark=mark, mask=mask)
@@ -333,6 +350,9 @@ class NC(BackdoorDefense):
             train_acc = (torch.eq(preds, labels).int().sum()) / preds.shape[0]
             print('\n<Unlearning> Train Epoch: {} \tLoss: {:.6f}, Train Acc: {:.6f}, lr: {:.2f}'.format(epoch, loss.item(), train_acc, optimizer.param_groups[0]['lr']))
             val_atk(self.args, self.model)
+            
+        torch.save(self.model.state_dict(), supervisor.get_model_dir(self.args, defense=True))
+        print("Saved repaired model to {}".format(supervisor.get_model_dir(self.args, defense=True)))
 
 class DatasetCL(Dataset):
     def __init__(self, ratio, full_dataset=None, transform=None, poison_ratio=0, mark=None, mask=None):

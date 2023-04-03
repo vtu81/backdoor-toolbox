@@ -33,7 +33,7 @@ args = parser.parse_args()
 if args.trigger is None:
     args.trigger = config.trigger_default[args.poison_type]
 
-tools.setup_seed(args.seed)
+# tools.setup_seed(args.seed)
 os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % args.devices
 if args.log:
     out_path = 'logs'
@@ -52,5 +52,9 @@ if args.log:
 if args.poison_type == 'trojannn':
     from other_attacks_tool_box import trojannn
     attacker = trojannn.attacker(args)
+    attacker.attack()
+elif args.poison_type == 'BadEncoder':
+    from other_attacks_tool_box import BadEncoder
+    attacker = BadEncoder.attacker(args)
     attacker.attack()
 else: raise NotImplementedError()

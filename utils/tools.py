@@ -258,6 +258,8 @@ def test_imagenet(model, test_loader, test_backdoor_loader=None):
 
     print('<clean accuracy> top1: %d/%d = %f; top5: %d/%d = %f' % (clean_top1,tot,clean_top1/tot,
                                                                    clean_top5,tot,clean_top5/tot))
+    
+    clean_top1_acc = clean_top1/tot
 
     if test_backdoor_loader is None: return
 
@@ -289,7 +291,9 @@ def test_imagenet(model, test_loader, test_backdoor_loader=None):
     print('<asr> top1: %d/%d = %f; top5: %d/%d = %f' % (adv_top1, tot, adv_top1 / tot,
                                                                        adv_top5, tot, adv_top5 / tot))
 
-
+    adv_top1_acc = adv_top1/tot
+    
+    return clean_top1_acc, adv_top1_acc
 
 def test_ember(model, test_loader, backdoor_test_loader):
     model.eval()
@@ -365,40 +369,8 @@ def unpack_poisoned_train_set(args, batch_size=128, shuffle=False, data_transfor
     """
     Return with `poison_set_dir`, `poisoned_set_loader`, `poison_indices`, and `cover_indices` if available
     """
-    if args.dataset == 'cifar10':
-        if data_transform is None:
-            if args.no_normalize:
-                data_transform = transforms.Compose([
-                        transforms.ToTensor(),
-                ])
-            else:
-                data_transform = transforms.Compose([
-                        transforms.ToTensor(),
-                        transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
-                ])
-    elif args.dataset == 'gtsrb':
-        if data_transform is None:
-            if args.no_normalize:
-                data_transform = transforms.Compose([
-                    transforms.ToTensor(),
-                ])
-            else:
-                data_transform = transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
-                ])
-    elif args.dataset == 'imagenette':
-        if data_transform is None:
-            if args.no_normalize:
-                data_transform = transforms.Compose([
-                    transforms.ToTensor(),
-                ])
-            else:
-                data_transform = transforms.Compose([
-                    transforms.ToTensor(),
-                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-                ])
-    else: raise NotImplementedError()
+    if data_transform is None:
+        data_transform_aug, data_transform, trigger_transform, normalizer, denormalizer = supervisor.get_transforms(args)
 
     poison_set_dir = supervisor.get_poison_set_dir(args)
 

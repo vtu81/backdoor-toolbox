@@ -83,7 +83,7 @@ class attacker(BackdoorAttack):
         self.args.poison_type = 'none'
         self.args.poison_rate = 0
         
-        arch = config.arch[args.dataset]
+        arch = supervisor.get_arch(args)
         self.model = arch(num_classes=self.num_classes).cuda()
         self.model.load_state_dict(torch.load(supervisor.get_model_dir(args)))
         self.model.eval()
@@ -268,27 +268,36 @@ class attacker(BackdoorAttack):
         # Retraining settings
         if self.args.dataset == 'cifar10':
             full_train_set = datasets.CIFAR10(root=os.path.join(config.data_dir, 'cifar10'), train=True, download=True, transform=transforms.ToTensor())
-            data_transform_aug = transforms.Compose([
+            self.data_transform_aug = transforms.Compose([
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomCrop(32, 4),
                 transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
             ])
+            retrain_lr = 0.1
+        elif self.args.dataset == 'gtsrb':
+            full_train_set = datasets.GTSRB(root=os.path.join(config.data_dir, 'gtsrb'), split='train', download=False, transform=transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()]))
+            self.data_transform_aug = transforms.Compose([
+                transforms.RandomRotation(15),
+                transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
+            ])
+            retrain_lr = 0.1
         else:
             raise NotImplementedError()
         
-        train_data = DatasetPoison(0.1, full_dataset=full_train_set, transform=data_transform_aug, poison_ratio=0.4, mark=self.trigger_mark.cpu(), mask=self.trigger_mask.cpu(), target_class=config.target_class[self.args.dataset])
-        train_loader = DataLoader(train_data, batch_size=128, shuffle=True)
+        train_data = DatasetPoison(1.0, full_dataset=full_train_set, transform=self.data_transform_aug, poison_ratio=0.1, mark=self.trigger_mark.cpu(), mask=self.trigger_mask.cpu(), target_class=config.target_class[self.args.dataset])
+        train_loader = DataLoader(train_data, batch_size=128, shuffle=True, num_workers=32)
         
         # val_set_dir = os.path.join('clean_set', self.args.dataset, 'clean_split')
         # val_set_img_dir = os.path.join(val_set_dir, 'data')
         # val_set_label_path = os.path.join(val_set_dir, 'clean_labels')
         # val_set = IMG_Dataset(data_dir=val_set_img_dir, label_path=val_set_label_path, transforms=transforms.ToTensor())
-        # train_data = DatasetPoison(1.0, full_dataset=val_set, transform=data_transform_aug, poison_ratio=0.4, mark=self.trigger_mark.cpu(), mask=self.trigger_mask.cpu(), target_class=config.target_class[self.args.dataset])
+        # train_data = DatasetPoison(1.0, full_dataset=val_set, transform=self.data_transform_aug, poison_ratio=0.4, mark=self.trigger_mark.cpu(), mask=self.trigger_mask.cpu(), target_class=config.target_class[self.args.dataset])
         # train_loader = DataLoader(train_data, batch_size=128, shuffle=True)
         
         criterion = nn.CrossEntropyLoss().cuda()
-        optimizer = torch.optim.SGD(self.model.parameters(), lr=0.1, momentum=self.momentum, weight_decay=self.weight_decay)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3, 6])
+        optimizer = torch.optim.SGD(self.model.parameters(), lr=retrain_lr, momentum=self.momentum, weight_decay=self.weight_decay)
+        # optimizer = optim.Adam([p for p in self.model.parameters() if p.requires_grad], lr=0.001)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3, 6])#, milestones=[3, 6])
 
         # self.test(self.model)
         tools.test(model=self.model, test_loader=test_set_loader, poison_test=True, poison_transform=poison_transform, num_classes=self.num_classes)
@@ -316,90 +325,10 @@ class attacker(BackdoorAttack):
             # self.test(self.model)
             tools.test(model=self.model, test_loader=test_set_loader, poison_test=True, poison_transform=poison_transform, num_classes=self.num_classes)
             
-        save_path = f'models/trojannn_seed={self.args.seed}.pt'
+        save_path = supervisor.get_model_dir(args)
         torch.save(self.model.state_dict(), save_path)
         print(f"Saved TrojanNN to {save_path}.")
         
-        # for epoch in range(10):
-        #     # Retrain
-        #     self.model.train()
-        #     self.model.freeze_feature()
-        #     preds = []
-        #     poison_preds = []
-        #     labels = []
-        #     poison_labels = []
-        #     for data, target in tqdm(self.loader):
-        #         optimizer.zero_grad()
-        #         data, target = data.cuda(), target.cuda()  # train set batch
-        #         output = self.model(data)
-        #         preds.append(output.argmax(dim=1))
-        #         labels.append(target)
-        #         loss = criterion(output, target)
-                
-        #         poison_data = self.add_mark(data, mark_alpha=1.0)
-        #         poison_target = torch.empty_like(target).fill_(config.target_class[self.args.dataset]).cuda()
-        #         poison_output = self.model(poison_data)
-        #         poison_preds.append(poison_output.argmax(dim=1))
-        #         poison_labels.append(poison_target)
-        #         loss += criterion(poison_output, poison_target)
-                
-        #         loss.backward()
-        #         optimizer.step()
-        #     preds = torch.cat(preds, dim=0)
-        #     labels = torch.cat(labels, dim=0)
-        #     train_acc = (torch.eq(preds, labels).int().sum()) / preds.shape[0]
-        #     print('\n<Retraining> Train Epoch: {} \tLoss: {:.6f}, Train Acc: {:.6f}, lr: {:.3f}'.format(epoch, loss.item(), train_acc, optimizer.param_groups[0]['lr']))
-        #     self.test(self.model)
-            
-    # def test(self, model):
-    #     model.eval()
-    #     args = self.args
-    #     test_loader = generate_dataloader(dataset=args.dataset, dataset_path=config.data_dir, batch_size=100, split='test', shuffle=False, drop_last=False, data_transform=transforms.ToTensor())
-        
-        
-    #     num = 0
-    #     num_non_target = 0
-    #     num_clean_correct = 0
-    #     num_poison_eq_poison_label = 0
-    #     num_poison_eq_clean_label = 0
-
-    #     acr = 0 # attack correct rate
-    #     with torch.no_grad():
-    #         for batch_idx, (data, label) in enumerate(test_loader):
-
-    #             data, label = data.cuda(), label.cuda()  # train set batch
-    #             output = model(self.normalizer(data))
-    #             pred = output.argmax(dim=1)  # get the index of the max log-probability
-    #             num_clean_correct += pred.eq(label).sum().item()
-    #             num += len(label)
-
-    #             data = self.add_mark(data, mark_alpha=1.0)
-    #             poison_label = torch.empty_like(label).fill_(config.target_class[self.args.dataset])
-                
-    #             poison_output = model(self.normalizer(data))
-                
-    #             poison_pred = poison_output.argmax(dim=1)  # get the index of the max log-probability
-    #             this_batch_size = len(poison_label)
-    #             for bid in range(this_batch_size):
-    #                 if label[bid] != poison_label[bid]: # samples of non-target classes
-    #                     num_non_target += 1
-    #                     if poison_pred[bid] == poison_label[bid]:
-    #                         num_poison_eq_poison_label+=1
-    #                     if poison_pred[bid] == label[bid]:
-    #                         num_poison_eq_clean_label+=1
-    #                 else:
-    #                     if poison_pred[bid] == label[bid]:
-    #                         num_poison_eq_clean_label+=1
-        
-    #     clean_acc = num_clean_correct / num
-    #     asr = num_poison_eq_poison_label / num_non_target
-    #     acr = num_poison_eq_clean_label / len(test_loader.dataset)
-    #     print('Accuracy: %d/%d = %f' % (num_clean_correct, num, clean_acc))
-    #     print('ASR: %d/%d = %f' % (num_poison_eq_poison_label, num_non_target, asr))
-    #     print('ACR (Attack Correct Rate): %d/%d = %f' % (num_poison_eq_clean_label, len(test_loader.dataset), acr))
-    #     return clean_acc, asr, acr
-    
-    
     
 class DatasetPoison(Dataset):
     def __init__(self, ratio, full_dataset=None, transform=None, poison_ratio=0, mark=None, mask=None, target_class=0):

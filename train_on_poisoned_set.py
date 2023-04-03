@@ -85,62 +85,13 @@ if args.log:
     sys.stdout = fout
     sys.stderr = ferr
 
-if args.dataset == 'cifar10':
-
-    data_transform_aug = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32, 4),
-            transforms.ToTensor(),
-            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261]),
-    ])
-
-    data_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
-    ])
-
-elif args.dataset == 'gtsrb':
-
-    data_transform_aug = transforms.Compose([
-        transforms.RandomRotation(15),
-        transforms.ToTensor(),
-        transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
-    ])
-
-    data_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
-    ])
-
-elif args.dataset == 'imagenette':
-
-    data_transform_aug = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
-    ])
-
-    data_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
-    ])
-
-elif args.dataset == 'imagenet':
-    print('[ImageNet]')
-
-elif args.dataset == 'ember':
-    print('[Non-image Dataset] Ember')
-else:
-    raise NotImplementedError('dataset %s not supported' % args.dataset)
-
+data_transform_aug, data_transform, trigger_transform, normalizer, denormalizer = supervisor.get_transforms(args)
 
 
 if args.dataset == 'cifar10':
 
     num_classes = 10
-    arch = config.arch[args.dataset]
+    arch = supervisor.get_arch(args)
     momentum = 0.9
     weight_decay = 1e-4
     epochs = 100
@@ -151,7 +102,7 @@ if args.dataset == 'cifar10':
 elif args.dataset == 'gtsrb':
 
     num_classes = 43
-    arch = config.arch[args.dataset]
+    arch = supervisor.get_arch(args)
     momentum = 0.9
     weight_decay = 1e-4
     epochs = 100
@@ -162,7 +113,7 @@ elif args.dataset == 'gtsrb':
 elif args.dataset == 'imagenette':
 
     num_classes = 10
-    arch = config.arch[args.dataset]
+    arch = supervisor.get_arch(args)
     momentum = 0.9
     weight_decay = 1e-4
     epochs = 100
@@ -173,7 +124,7 @@ elif args.dataset == 'imagenette':
 elif args.dataset == 'imagenet':
 
     num_classes = 1000
-    arch = config.arch[args.dataset]
+    arch = supervisor.get_arch(args)
     momentum = 0.9
     weight_decay = 1e-4
     epochs = 90
@@ -184,7 +135,7 @@ elif args.dataset == 'imagenet':
 elif args.dataset == 'ember':
 
     num_classes = 2
-    arch = config.arch[args.dataset]
+    arch = supervisor.get_arch(args)
     momentum = 0.9
     weight_decay = 1e-6
     epochs = 10

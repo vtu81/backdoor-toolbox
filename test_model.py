@@ -56,61 +56,13 @@ if args.dataset == 'imagenet':
 else:
     kwargs = {'num_workers': 4, 'pin_memory': True}
 
-tools.setup_seed(args.seed)
+# tools.setup_seed(args.seed)
 
+data_transform_aug, data_transform, trigger_transform, normalizer, denormalizer = supervisor.get_transforms(args)
 
-if args.dataset == 'cifar10':
-
-    data_transform_aug = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32, 4),
-            transforms.ToTensor(),
-            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261]),
-    ])
-
-    data_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
-    ])
-
-elif args.dataset == 'gtsrb':
-
-    data_transform_aug = transforms.Compose([
-        transforms.RandomRotation(15),
-        transforms.ToTensor(),
-        transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
-    ])
-
-    data_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
-    ])
-
-elif args.dataset == 'imagenette':
-
-    data_transform_aug = transforms.Compose([
-        transforms.RandomCrop(224, 4),
-        transforms.RandomHorizontalFlip(),    
-        transforms.ColorJitter(brightness=0.4, contrast=0.4,saturation=0.4),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-    data_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-elif args.dataset == 'imagenet':
-    print('[ImageNet]')
-    
-else:
-
-    raise NotImplementedError('dataset %s not supported' % args.dataset)
 
 if args.dataset == 'cifar10':
     num_classes = 10
-    arch = config.arch[args.dataset]
     momentum = 0.9
     weight_decay = 1e-4
     epochs = 200
@@ -124,7 +76,6 @@ elif args.dataset == 'cifar100':
 
 elif args.dataset == 'gtsrb':
     num_classes = 43
-    arch = config.arch[args.dataset]
     momentum = 0.9
     weight_decay = 1e-4
     epochs = 100
@@ -134,7 +85,6 @@ elif args.dataset == 'gtsrb':
 
 elif args.dataset == 'imagenette':
     num_classes = 10
-    arch = config.arch[args.dataset]
     momentum = 0.9
     weight_decay = 1e-4
     epochs = 100
@@ -143,9 +93,7 @@ elif args.dataset == 'imagenette':
     batch_size = 128
     
 elif args.dataset == 'imagenet':
-
     num_classes = 1000
-    arch = config.arch[args.dataset]
     momentum = 0.9
     weight_decay = 1e-4
     epochs = 90
@@ -162,7 +110,7 @@ poison_set_dir = supervisor.get_poison_set_dir(args)
 model_path = supervisor.get_model_dir(args, cleanse=(args.cleanser is not None))
 
 
-arch = config.arch[args.dataset]
+arch = supervisor.get_arch(args)
 
 import torchvision
 # model = torchvision.models.resnet18(weights='IMAGENET1K_V1')
@@ -175,7 +123,7 @@ print("Evaluating model '{}'...".format(model_path))
 # Set Up Test Set for Debug & Evaluation
 if args.dataset != 'imagenet':
     test_set_dir = os.path.join('clean_set', args.dataset, 'test_split')
-    test_set_img_dir = os.path.join(test_set_dir, 'imgs')
+    test_set_img_dir = os.path.join(test_set_dir, 'data')
     test_set_label_path = os.path.join(test_set_dir, 'labels')
     test_set = tools.IMG_Dataset(data_dir=test_set_img_dir,
                                 label_path=test_set_label_path, transforms=data_transform)
