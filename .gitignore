@@ -1,6 +1,7 @@
 # Customized
 
 assets/*
+!assets/backdoor-toolbox.gif
 !assets/.dummy
 
 data/cifar10/cifar*
