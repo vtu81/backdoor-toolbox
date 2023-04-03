@@ -13,9 +13,6 @@ from utils import default_args, tools
 GTSRB, CIFAR10, Imagenette, Imagenet, Ember
 """
 
-
-
-
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-dataset', type=str, required=False, default=default_args.parser_default['dataset'],
@@ -27,15 +24,10 @@ args = parser.parse_args()
 
 tools.setup_seed(0)
 
-
-datasets.ImageNet
-
-
-
 """
 Get Data Set
 """
-data_dir = './data' # directory to save standard clean set
+data_dir = './data'  # directory to save standard clean set
 
 if args.dataset == 'gtsrb':
     data_transform = transforms.Compose([
@@ -51,7 +43,7 @@ elif args.dataset == 'cifar10':
         transforms.ToTensor()
     ])
     clean_set = datasets.CIFAR10(os.path.join(data_dir, 'cifar10'), train=False,
-                                  download=True, transform=data_transform)
+                                 download=True, transform=data_transform)
     img_size = 32
     num_classes = 10
 elif args.dataset == 'imagenette':
@@ -91,13 +83,13 @@ elif args.dataset == 'ember':
             feature_version=1
         )
 
-    #x_train = x_train.astype(dtype='float64')
+    # x_train = x_train.astype(dtype='float64')
     x_test = x_test.astype(np.float)
     y_test = y_test.astype(np.long)
 
     # Get rid of unknown labels
-    #x_train = x_train[y_train != -1]
-    #y_train = y_train[y_train != -1]
+    # x_train = x_train[y_train != -1]
+    # y_train = y_train[y_train != -1]
     x_test = x_test[y_test != -1]
     y_test = y_test[y_test != -1]
 
@@ -105,7 +97,6 @@ elif args.dataset == 'ember':
 else:
     print('<Undefined> Dataset = %s' % args.dataset)
     exit(0)
-
 
 """
 Generate Clean Split
@@ -119,29 +110,27 @@ root_dir = os.path.join(root_dir, args.dataset)
 if not os.path.exists(root_dir):
     os.mkdir(root_dir)
 
-clean_split_dir = os.path.join(root_dir, 'clean_split') # clean samples at hand for defensive purpose
+clean_split_dir = os.path.join(root_dir, 'clean_split')  # clean samples at hand for defensive purpose
 if not os.path.exists(clean_split_dir):
     os.mkdir(clean_split_dir)
 
-clean_split_img_dir = os.path.join(clean_split_dir, 'data') # to save img
+clean_split_img_dir = os.path.join(clean_split_dir, 'data')  # to save img
 if not os.path.exists(clean_split_img_dir):
     os.mkdir(clean_split_img_dir)
 
-test_split_dir = os.path.join(root_dir, 'test_split') # test samples for evaluation & debug purpose
+test_split_dir = os.path.join(root_dir, 'test_split')  # test samples for evaluation & debug purpose
 if not os.path.exists(test_split_dir):
     os.mkdir(test_split_dir)
 
-test_split_img_dir = os.path.join(test_split_dir, 'data') # to save img
+test_split_img_dir = os.path.join(test_split_dir, 'data')  # to save img
 if not os.path.exists(test_split_img_dir):
     os.mkdir(test_split_img_dir)
-
-
 
 if args.dataset != 'ember' and args.dataset != 'imagenet':
 
     # randomly sample from a clean test set to simulate the clean samples at hand
     num_img = len(clean_set)
-    id_set = list(range(0,num_img))
+    id_set = list(range(0, num_img))
     random.shuffle(id_set)
     clean_split_indices = id_set[:args.clean_budget]
     test_indices = id_set[args.clean_budget:]
@@ -193,7 +182,7 @@ elif args.dataset == 'imagenet':
     test_indices = id_set[args.clean_budget:]
 
     print('[Generate Clean Split Set] Save %s' % os.path.join(clean_split_dir, 'clean_split_indices'))
-    torch.save(clean_split_indices, os.path.join(clean_split_dir, 'clean_split_indices') )
+    torch.save(clean_split_indices, os.path.join(clean_split_dir, 'clean_split_indices'))
 
     print('[Generate Test Set] Save %s' % os.path.join(test_split_dir, 'test_indices'))
     torch.save(test_indices, os.path.join(test_split_dir, 'test_indices'))
@@ -206,7 +195,6 @@ else:
     clean_split_indices = id_set[:args.clean_budget]
     test_indices = id_set[args.clean_budget:]
 
-
     x_clean_split = x_test[clean_split_indices]
     y_clean_split = y_test[clean_split_indices]
 
@@ -215,8 +203,9 @@ else:
 
     np.save(os.path.join(clean_split_dir, 'X'), x_clean_split)
     np.save(os.path.join(clean_split_dir, 'Y'), y_clean_split)
-    print('[Generate Clean Split Set] %s, %s' % (os.path.join(clean_split_dir, 'X'), os.path.join(clean_split_dir, 'Y')) )
+    print(
+        '[Generate Clean Split Set] %s, %s' % (os.path.join(clean_split_dir, 'X'), os.path.join(clean_split_dir, 'Y')))
 
     np.save(os.path.join(test_split_dir, 'X'), x_test_split)
     np.save(os.path.join(test_split_dir, 'Y'), y_test_split)
-    print('[Generate Test Set] %s, %s' % (os.path.join(test_split_dir, 'X'), os.path.join(test_split_dir, 'Y')) )
+    print('[Generate Test Set] %s, %s' % (os.path.join(test_split_dir, 'X'), os.path.join(test_split_dir, 'Y')))

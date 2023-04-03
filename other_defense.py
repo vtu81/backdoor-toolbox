@@ -1,5 +1,5 @@
 import torch
-from other_defenses_tool_box import NC, STRIP, FP, ABL, NAD, SentiNet
+from other_defenses_tool_box import NC, STRIP, FP, ABL, NAD, SentiNet, ScaleUp
 import argparse, config, os, sys
 from utils import supervisor, tools, default_args
 import time
@@ -162,6 +162,10 @@ elif args.defense == 'SentiNet':
         N=100,
     )
     defense.detect()
+elif args.defense == 'ScaleUp':
+    defense = ScaleUp(args)
+    defense.detect()
+
 else: raise NotImplementedError()
 
 end_time = time.perf_counter()
