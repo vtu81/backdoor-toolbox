@@ -117,7 +117,7 @@ def get_arch(args):
         else: raise NotImplementedError
     else:
         return config.arch[args.dataset]
-    
+
 def get_transforms(args):
     if args.dataset == 'gtsrb':
         if args.no_normalize:
