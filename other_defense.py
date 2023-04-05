@@ -1,5 +1,5 @@
 import torch
-from other_defenses_tool_box import NC, STRIP, FP, ABL, NAD, SentiNet, ScaleUp, SEAM
+from other_defenses_tool_box import NC, STRIP, FP, ABL, NAD, SentiNet, ScaleUp, SEAM, STF
 import argparse, config, os, sys
 from utils import supervisor, tools, default_args
 import time
@@ -170,6 +170,9 @@ elif args.defense == 'ScaleUp':
     defense.detect()
 elif args.defense == "SEAM":
     defense = SEAM(args)
+    defense.detect()
+elif args.defense == "STF":
+    defense = STF(args)
     defense.detect()
 
 else:

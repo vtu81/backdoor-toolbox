@@ -11,13 +11,13 @@ from torch.utils.data import Subset, DataLoader
 from utils.tools import test
 
 
-class SEAM(BackdoorDefense):
-    name: str = 'SEAM'
+class STF(BackdoorDefense):
+    name: str = 'STF'
 
-    def __init__(self, args, epoches=80, init_lr=0.1, update_lr=0.05):
+    def __init__(self, args, epochs=80, init_lr=0.1, update_lr=0.05):
         super().__init__(args)
         self.args = args
-        self.epoches = epoches
+        self.epochs = epochs
         self.init_lr = init_lr
         self.update_lr = update_lr
 
@@ -43,10 +43,9 @@ class SEAM(BackdoorDefense):
 
     def detect(self):
         optimizer = torch.optim.SGD(self.model.parameters(),
-                                    lr=self.init_lr,
-                                    nesterov=True)
+                                    lr=self.init_lr)
         # forget set training
-        for epoch in range(self.epoches):
+        for epoch in range(self.epochs):
             self.model.train()
             for idx, (clean_img, labels) in enumerate(self.test_loader):
                 clean_img = clean_img.cuda()  # batch * channels * height * width
@@ -57,6 +56,7 @@ class SEAM(BackdoorDefense):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                print("In epoch {}: The loss --- {}".format(epoch, loss))
 
             if epoch > 40:
                 for param_group in optimizer.param_groups:

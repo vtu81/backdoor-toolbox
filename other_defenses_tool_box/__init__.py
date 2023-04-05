@@ -7,3 +7,4 @@ from .neural_attention_distillation import NAD
 from .sentinet import SentiNet
 from .scale_up import ScaleUp
 from .SEAM import SEAM
+from .STF import STF
