@@ -93,11 +93,11 @@ class poison_transform():
 
         if self.has_normalized:
             data = self.denormalizer(data)
-            data = data + self.pattern
+            data = data + self.pattern.to(data.device)
             data = torch.clamp(data, 0.0, 1.0)
             data = self.normalizer(data)
         else:
-            data = data + self.pattern
+            data = data + self.pattern.to(data.device)
             data = torch.clamp(data, 0.0, 1.0)
 
         labels[:] = self.target_class

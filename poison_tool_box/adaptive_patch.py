@@ -275,7 +275,7 @@ class poison_transform():
 
         data = self.denormalizer(data)
         for j in range(len(self.trigger_marks)):
-            data = data + self.alphas[j] * self.trigger_masks[j] * (self.trigger_marks[j] - data)
+            data = data + self.alphas[j] * self.trigger_masks[j].to(data.device) * (self.trigger_marks[j].to(data.device) - data)
         data = self.normalizer(data)
         labels[:] = self.target_class
 

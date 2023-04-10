@@ -101,12 +101,15 @@ class poison_transform():
 
         labels = labels.clone()
         data = data.clone()
+        
+        encoder = self.encoder.to(data.device)
+        secret = self.secret.to(data.device)
 
         labels[:] = self.target_class
         data = self.denormalizer(data)
         # bd_data = data.clone()
         for i in range(len(data)):
-            residual = self.encoder([self.secret, data[i].unsqueeze(0).cuda()])
+            residual = encoder([secret, data[i].unsqueeze(0)])
             encoded_image = data[i] + residual
             encoded_image = encoded_image.clamp(0, 1)
             data[i] = encoded_image.squeeze(0)

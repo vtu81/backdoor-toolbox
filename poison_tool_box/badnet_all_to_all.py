@@ -66,7 +66,7 @@ class poison_transform():
 
     def transform(self, data, labels):
         data, labels = data.clone(), labels.clone()
-        data = data + self.alpha * self.trigger_mask * (self.trigger_mark - data)
+        data = data + self.alpha * self.trigger_mask.to(data.device) * (self.trigger_mark.to(data.device) - data)
         labels = (labels + 1) % self.num_classes
         
         return data, labels

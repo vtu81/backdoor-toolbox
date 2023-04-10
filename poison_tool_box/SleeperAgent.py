@@ -1042,7 +1042,7 @@ class poison_transform():
 
     def transform(self, data, labels):
         data, labels = data.clone(), labels.clone()
-        patch = self.normalizer(self.patch)
+        patch = self.normalizer(self.patch).to(data.device)
         for i in range(len(labels)):
             source_img = data[i]
             if self.random_patch:

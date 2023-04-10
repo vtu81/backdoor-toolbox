@@ -92,6 +92,6 @@ class poison_transform():
         # transform clean samples to poison samples
 
         labels[:] = self.target_class
-        data = data + self.mask*(self.trigger - data)
+        data = data + self.mask.to(data.device) * (self.trigger.to(data.device) - data)
 
         return data, labels

@@ -65,7 +65,7 @@ class poison_transform():
         labels = labels.clone()
         # transform clean samples to poison samples
         labels[:] = self.target_class
-        data = (1 - self.alpha) * data + self.alpha * self.trigger
+        data = (1 - self.alpha) * data + self.alpha * self.trigger.to(data.device)
         
         # debug
         # from torchvision.utils import save_image

@@ -130,7 +130,7 @@ class poison_transform():
 
     def transform(self, data, labels):
         data, labels = data.clone(), labels.clone()
-        data = data + self.alpha * (self.trigger - data)
+        data = data + self.alpha * (self.trigger.to(data.device) - data)
         labels[:] = self.target_class
 
         # debug

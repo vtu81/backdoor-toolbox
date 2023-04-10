@@ -119,7 +119,7 @@ class poison_transform():
         self.noise_grid = noise_grid.cuda()
 
     def transform(self, data, labels):
-        grid_temps = (self.identity_grid + self.s * self.noise_grid / self.img_size) * self.grid_rescale
+        grid_temps = (self.identity_grid.to(data.device) + self.s * self.noise_grid.to(data.device) / self.img_size) * self.grid_rescale
         grid_temps = torch.clamp(grid_temps, -1, 1)
 
         data, labels = data.clone(), labels.clone()

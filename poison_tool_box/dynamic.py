@@ -102,8 +102,7 @@ class poison_transform():
         netG = Generator(channel_init=channel_init, steps=steps, input_channel=input_channel,
                          normalizer=normalizer, denormalizer=denormalizer)
         netG.load_state_dict(state_dict["netG"])
-        netG = nn.DataParallel(netG)
-        netG.cuda()
+        netG = netG.cuda()
         netG.eval()
         netG.requires_grad_(False)
         self.pattern_generator = netG
@@ -111,8 +110,7 @@ class poison_transform():
         netM = Generator(channel_init=channel_init, steps=steps, input_channel=input_channel,
                          normalizer=normalizer, denormalizer=denormalizer, out_channels=1)
         netM.load_state_dict(state_dict["netM"])
-        netM = nn.DataParallel(netM)
-        netM.cuda()
+        netM = netM.cuda()
         netM.eval()
         netM.requires_grad_(False)
         self.mask_generator = netM
@@ -129,10 +127,13 @@ class poison_transform():
 
         # transform clean samples to poison samples
         labels[:] = self.target_class
+        
+        pattern_generator = self.pattern_generator.to(data.device)
+        mask_generator = self.mask_generator.to(data.device)
 
-        pattern = self.pattern_generator(data)
-        pattern = self.pattern_generator.module.normalize_pattern(pattern)
-        masks_output = self.mask_generator.module.threshold(self.mask_generator(data))
+        pattern = pattern_generator(data)
+        pattern = pattern_generator.normalize_pattern(pattern)
+        masks_output = mask_generator.threshold(mask_generator(data))
         bd_data = data + (pattern - data) * masks_output
 
         if (not self.has_normalized) and self.require_normalization:

@@ -64,7 +64,7 @@ def get_dir_core(args, include_model_name=False, include_poison_seed=False):
     ratio = '%.3f' % args.poison_rate
     # ratio = '%.1f' % (args.poison_rate * 100) + '%'
     if args.poison_type in ['trojannn', 'BadEncoder']:
-        dir_core = args.poison_type
+        dir_core = '%s_%s' % (args.dataset, args.poison_type)
     elif args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
         blend_alpha = '%.3f' % args.alpha
         dir_core = '%s_%s_%s_alpha=%s_trigger=%s' % (args.dataset, args.poison_type, ratio, blend_alpha, args.trigger)
@@ -343,9 +343,9 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
                 trigger_map = temp_trans(trigger)
                 trigger_mask = torch.logical_or(torch.logical_or(trigger_map[0] > 0, trigger_map[1] > 0), trigger_map[2] > 0).float()
 
-            trigger = trigger_transform(trigger).cuda()
+            trigger = trigger_transform(trigger)
             # print('trigger_shape: ', trigger.shape)
-            trigger_mask = trigger_mask.cuda()
+            trigger_mask = trigger_mask
 
         if poison_type == 'basic':
             from poison_tool_box import basic
