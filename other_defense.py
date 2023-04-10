@@ -1,5 +1,5 @@
 import torch
-from other_defenses_tool_box import NC, STRIP, FP, ABL, NAD, SentiNet, ScaleUp
+from other_defenses_tool_box import NC, STRIP, FP, ABL, NAD, SentiNet, ScaleUp, SEAM, STF
 import argparse, config, os, sys
 from utils import supervisor, tools, default_args
 import time
@@ -8,19 +8,19 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-dataset', type=str, required=False,
                     default=default_args.parser_default['dataset'],
                     choices=default_args.parser_choices['dataset'])
-parser.add_argument('-poison_type', type=str,  required=False,
+parser.add_argument('-poison_type', type=str, required=False,
                     choices=default_args.parser_choices['poison_type'],
                     default=default_args.parser_default['poison_type'])
-parser.add_argument('-poison_rate', type=float,  required=False,
+parser.add_argument('-poison_rate', type=float, required=False,
                     choices=default_args.parser_choices['poison_rate'],
                     default=default_args.parser_default['poison_rate'])
-parser.add_argument('-cover_rate', type=float,  required=False,
+parser.add_argument('-cover_rate', type=float, required=False,
                     choices=default_args.parser_choices['cover_rate'],
                     default=default_args.parser_default['cover_rate'])
-parser.add_argument('-alpha', type=float,  required=False,
+parser.add_argument('-alpha', type=float, required=False,
                     default=default_args.parser_default['alpha'])
-parser.add_argument('-test_alpha', type=float,  required=False, default=None)
-parser.add_argument('-trigger', type=str,  required=False,
+parser.add_argument('-test_alpha', type=float, required=False, default=None)
+parser.add_argument('-trigger', type=str, required=False,
                     default=None)
 parser.add_argument('-no_aug', default=False, action='store_true')
 parser.add_argument('-model', type=str, required=False, default=None)
@@ -55,7 +55,9 @@ if args.log:
     if not os.path.exists(out_path): os.mkdir(out_path)
     out_path = os.path.join(out_path, 'other_defense')
     if not os.path.exists(out_path): os.mkdir(out_path)
-    out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=True, include_poison_seed=config.record_poison_seed)))
+    out_path = os.path.join(out_path, '%s_%s.out' % (args.defense,
+                                                     supervisor.get_dir_core(args, include_model_name=True,
+                                                                             include_poison_seed=config.record_poison_seed)))
     # fout = open(out_path, 'w')
     fout = open(out_path, 'w')
     ferr = open('/dev/null', 'a')
@@ -73,7 +75,7 @@ if args.defense == 'NC':
         patience=5,
         attack_succ_threshold=0.99,
         oracle=False,
-        )
+    )
     defense.detect()
 elif args.defense == 'STRIP':
     defense = STRIP(
@@ -82,7 +84,7 @@ elif args.defense == 'STRIP':
         N=100,
         defense_fpr=0.1,
         batch_size=128,
-        )
+    )
     defense.detect()
 elif args.defense == 'FP':
     if args.dataset == 'cifar10':
@@ -98,8 +100,9 @@ elif args.defense == 'FP':
             prune_ratio=0.75,
             finetune_epoch=100,
             max_allowed_acc_drop=0.1,
-        ) 
-    else: raise NotImplementedError()
+        )
+    else:
+        raise NotImplementedError()
     defense.detect()
 elif args.defense == 'ABL':
     if args.dataset == 'cifar10':
@@ -131,17 +134,17 @@ elif args.defense == 'ABL':
             do_isolate=True,
             finetuning_ascent_model=True,
             finetuning_epochs=10,
-            
+
             # # For 0.001 isolation rate
             # unlearning_epochs=10,
             # lr_unlearning=1e-3,
             # do_unlearn=True,
-            
+
             # For 0.003 isolation rate
             unlearning_epochs=5,
             lr_unlearning=5e-4,
             do_unlearn=True,
-            
+
             # # For 0.005 isolation rate
             # unlearning_epochs=5,
             # lr_unlearning=1e-3,
@@ -165,8 +168,15 @@ elif args.defense == 'SentiNet':
 elif args.defense == 'ScaleUp':
     defense = ScaleUp(args)
     defense.detect()
+elif args.defense == "SEAM":
+    defense = SEAM(args)
+    defense.detect()
+elif args.defense == "STF":
+    defense = STF(args)
+    defense.detect()
 
-else: raise NotImplementedError()
+else:
+    raise NotImplementedError()
 
 end_time = time.perf_counter()
 print("Elapsed time: {:.2f}s".format(end_time - start_time))
