@@ -17,6 +17,7 @@ data/VOCdevkit/*
 models/*
 !models/.dummy
 !models/ISSBA_cifar10.pth
+!models/*narrow*
 
 poisoned_train_set/*
 !poisoned_train_set/.dummy
