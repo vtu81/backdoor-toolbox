@@ -34,6 +34,14 @@ class BackdoorDefense():
             self.momentum = 0.9
             self.weight_decay = 1e-4
             self.learning_rate = 0.1
+        elif args.dataset == 'imagenet':
+            self.img_size = 224
+            self.num_classes = 1000
+            self.input_channel = 3
+            self.shape = torch.Size([3, 224, 224])
+            self.momentum = 0.9
+            self.weight_decay = 1e-4
+            self.learning_rate = 0.1
         else:
             print('<Undefined> Dataset = %s' % args.dataset)
             exit(0)

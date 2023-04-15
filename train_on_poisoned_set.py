@@ -45,15 +45,7 @@ from utils import supervisor, tools
 
 
 if args.trigger is None:
-    if args.dataset != 'imagenette' and args.dataset != 'imagenet':
-        args.trigger = config.trigger_default[args.poison_type]
-    elif args.dataset == 'imagenet':
-        args.trigger = imagenet.triggers[args.poison_type]
-    else:
-        if args.poison_type == 'badnet':
-            args.trigger = 'badnet_high_res.png'
-        else:
-            raise NotImplementedError('%s not implemented for imagenette' % args.poison_type)
+    args.trigger = config.trigger_default[args.dataset][args.poison_type]
 
 
 all_to_all = False
@@ -191,9 +183,8 @@ elif args.dataset == 'imagenet':
     test_set_dir = os.path.join(config.imagenet_dir, 'val')
 
     from utils import imagenet
-    #imagenet_ffcv
-    poisoned_set = imagenet.imagenet_dataset(directory=train_set_dir, poison_directory=poisoned_set_img_dir,
-                                             poison_indices = poison_indices, target_class=imagenet.target_class,
+    poisoned_set = imagenet.imagenet_dataset(directory=train_set_dir, data_transform=data_transform_aug, poison_directory=poisoned_set_img_dir,
+                                             poison_indices = poison_indices, target_class=config.target_class['imagenet'],
                                              num_classes=1000)
 
     poisoned_set_loader = torch.utils.data.DataLoader(
@@ -251,12 +242,14 @@ if args.dataset != 'ember' and args.dataset != 'imagenet':
 
 elif args.dataset == 'imagenet':
 
-    poison_transform = imagenet.get_poison_transform_for_imagenet(args.poison_type)
+    poison_transform = supervisor.get_poison_transform(poison_type=args.poison_type, dataset_name=args.dataset,
+                                                       target_class=config.target_class[args.dataset], trigger_transform=data_transform,
+                                                       is_normalized_input=True,
+                                                       alpha=args.alpha if args.test_alpha is None else args.test_alpha,
+                                                       trigger_name=args.trigger, args=args)
 
-    test_set = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, aug=False,
+    test_set = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, data_transform=data_transform,
                  label_file=imagenet.test_set_labels, num_classes=1000)
-    test_set_backdoor = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, aug=False,
-                 label_file=imagenet.test_set_labels, num_classes=1000, poison_transform=poison_transform)
 
     test_split_meta_dir = os.path.join('clean_set', args.dataset, 'test_split')
     test_indices = torch.load(os.path.join(test_split_meta_dir, 'test_indices'))
@@ -265,13 +258,6 @@ elif args.dataset == 'imagenet':
     test_set_loader = torch.utils.data.DataLoader(
         test_set,
         batch_size=batch_size, shuffle=False, worker_init_fn=tools.worker_init, **kwargs)
-
-    test_set_backdoor = torch.utils.data.Subset(test_set_backdoor, test_indices)
-    test_set_backdoor_loader = torch.utils.data.DataLoader(
-        test_set_backdoor,
-        batch_size=batch_size, shuffle=False, worker_init_fn=tools.worker_init, **kwargs)
-
-
 
 else:
     normalizer = poisoned_set.normal
@@ -433,18 +419,12 @@ for epoch in range(1, epochs+1):  # train backdoored base model
     scheduler.step()
 
     # Test
-
     if args.dataset != 'ember':
         if True:
         # if epoch % 5 == 0:
-            if args.dataset == 'imagenet':
-                tools.test_imagenet(model=model, test_loader=test_set_loader,
-                                    test_backdoor_loader=test_set_backdoor_loader if args.poison_type != 'none' else None)
-                torch.save(model.module.state_dict(), model_path)
-            else:
-                tools.test(model=model, test_loader=test_set_loader, poison_test=True if args.poison_type != 'none' else False,
-                           poison_transform=poison_transform, num_classes=num_classes, source_classes=source_classes, all_to_all=all_to_all)
-                torch.save(model.module.state_dict(), model_path)
+            tools.test(model=model, test_loader=test_set_loader, poison_test=True if args.poison_type != 'none' else False,
+                        poison_transform=poison_transform, num_classes=num_classes, source_classes=source_classes, all_to_all=all_to_all)
+            torch.save(model.module.state_dict(), model_path)
     else:
 
         tools.test_ember(model=model, test_loader=test_set_loader,
@@ -453,15 +433,7 @@ for epoch in range(1, epochs+1):  # train backdoored base model
     print("")
     
     meta_info['epoch'] = epoch
-    torch.save(meta_info, os.path.join(poison_set_dir, "meta_info_seed={}".format(args.seed)))
+    torch.save(meta_info, os.path.join(poison_set_dir, "meta_info_{}".format(supervisor.get_model_name(args))))
 
 
 torch.save(model.module.state_dict(), model_path)
-
-if args.poison_type == 'none':
-    if args.no_aug:
-        torch.save(model.module.state_dict(), f'models/{args.dataset}_vanilla_no_aug.pt')
-        torch.save(model.module.state_dict(), f'models/{args.dataset}_vanilla_no_aug_seed={args.seed}.pt')
-    else:
-        torch.save(model.module.state_dict(), f'models/{args.dataset}_vanilla_aug.pt')
-        torch.save(model.module.state_dict(), f'models/{args.dataset}_vanilla_aug_seed={args.seed}.pt')

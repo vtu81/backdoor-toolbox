@@ -40,15 +40,7 @@ args = parser.parse_args()
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % args.devices
 if args.trigger is None:
-    if args.dataset != 'imagenette' and args.dataset != 'imagenet':
-        args.trigger = config.trigger_default[args.poison_type]
-    elif args.dataset == 'imagenet':
-        args.trigger = imagenet.triggers[args.poison_type]
-    else:
-        if args.poison_type == 'badnet':
-            args.trigger = 'badnet_high_res.png'
-        else:
-            raise NotImplementedError('%s not implemented for imagenette' % args.poison_type)
+    args.trigger = config.trigger_default[args.dataset][args.poison_type]
 
 
 if args.dataset == 'imagenet':
@@ -140,14 +132,8 @@ if args.dataset != 'imagenet':
 
 elif args.dataset == 'imagenet':
     test_set_dir = os.path.join(config.imagenet_dir, 'val')
-
-    poison_transform = imagenet.get_poison_transform_for_imagenet(args.poison_type)
-
-    test_set = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, aug=False,
+    test_set = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, data_transform=data_transform,
                  label_file=imagenet.test_set_labels, num_classes=1000)
-    test_set_backdoor = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, aug=False,
-                 label_file=imagenet.test_set_labels, num_classes=1000, poison_transform=poison_transform)
-
     test_split_meta_dir = os.path.join('clean_set', args.dataset, 'test_split')
     test_indices = torch.load(os.path.join(test_split_meta_dir, 'test_indices'))
 
@@ -156,11 +142,12 @@ elif args.dataset == 'imagenet':
         test_set,
         batch_size=batch_size, shuffle=False, worker_init_fn=tools.worker_init, **kwargs)
 
-    test_set_backdoor = torch.utils.data.Subset(test_set_backdoor, test_indices)
-    test_set_backdoor_loader = torch.utils.data.DataLoader(
-        test_set_backdoor,
-        batch_size=batch_size, shuffle=False, worker_init_fn=tools.worker_init, **kwargs)
-
+    # Poison Transform for Testing
+    poison_transform = supervisor.get_poison_transform(poison_type=args.poison_type, dataset_name=args.dataset,
+                                                    target_class=config.target_class[args.dataset], trigger_transform=data_transform,
+                                                    is_normalized_input=True,
+                                                    alpha=args.alpha if args.test_alpha is None else args.test_alpha,
+                                                    trigger_name=args.trigger, args=args)
 
 
 if args.poison_type == 'TaCT' or args.poison_type == 'SleeperAgent':
@@ -168,8 +155,4 @@ if args.poison_type == 'TaCT' or args.poison_type == 'SleeperAgent':
 else:
     source_classes = None
 
-if args.dataset != 'imagenet':
-    tools.test(model=model, test_loader=test_set_loader, poison_test=True, poison_transform=poison_transform, num_classes=num_classes, source_classes=source_classes, all_to_all=('all_to_all' in args.poison_type))
-if args.dataset == 'imagenet':
-    tools.test_imagenet(model=model, test_loader=test_set_loader,
-                        test_backdoor_loader=test_set_backdoor_loader)
+tools.test(model=model, test_loader=test_set_loader, poison_test=True, poison_transform=poison_transform, num_classes=num_classes, source_classes=source_classes, all_to_all=('all_to_all' in args.poison_type))

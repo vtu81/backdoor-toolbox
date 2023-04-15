@@ -34,13 +34,7 @@ print('[target class : %d]' % config.target_class[args.dataset])
 
 data_dir = config.data_dir  # directory to save standard clean set
 if args.trigger is None:
-    if args.dataset != 'imagenette':
-        args.trigger = config.trigger_default[args.poison_type]
-    else:
-        if args.poison_type == 'badnet':
-            args.trigger = 'badnet_high_res.png'
-        else:
-            raise NotImplementedError('%s not implemented for imagenette' % args.poison_type)
+    args.trigger = config.trigger_default[args.dataset][args.poison_type]
 
 if not os.path.exists(os.path.join('poisoned_train_set', args.dataset)):
     os.mkdir(os.path.join('poisoned_train_set', args.dataset))

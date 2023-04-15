@@ -39,7 +39,7 @@ parser.add_argument('-seed', type=int, required=False, default=default_args.seed
 args = parser.parse_args()
 
 if args.trigger is None:
-    args.trigger = config.trigger_default[args.poison_type]
+    args.trigger = config.trigger_default[args.dataset][args.poison_type]
 
 tools.setup_seed(args.seed)
 os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % args.devices

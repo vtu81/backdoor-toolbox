@@ -41,15 +41,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % args.devices
 # tools.setup_seed(args.seed)
 
 if args.trigger is None:
-    if args.dataset != 'imagenette' and args.dataset != 'imagenet':
-        args.trigger = config.trigger_default[args.poison_type]
-    elif args.dataset == 'imagenet':
-        args.trigger = imagenet.triggers[args.poison_type]
-    else:
-        if args.poison_type == 'badnet':
-            args.trigger = 'badnet_high_res.png'
-        else:
-            raise NotImplementedError('%s not implemented for imagenette' % args.poison_type)
+    args.trigger = config.trigger_default[args.dataset][args.poison_type]
 
 
 all_to_all = False

@@ -36,6 +36,8 @@ def get_model_name(args, cleanse=False, defense=False):
         model_name = args.model
     elif args.poison_type in ['trojannn']:
         model_name = f'{args.dataset}_{args.poison_type}_seed={args.seed}.pt'
+    elif args.poison_type == 'SRA':
+        model_name = f'{args.dataset}_{args.poison_type}_seed={args.seed}.pt'
     elif args.poison_type == 'BadEncoder':
         if args.dataset == 'gtsrb':
             model_name = 'BadEncoder_cifar2gtsrb.pth'
@@ -52,6 +54,9 @@ def get_model_name(args, cleanse=False, defense=False):
         model_name = f"cleansed_{args.cleanser}_{model_name}"
     elif defense and hasattr(args, 'defense') and args.defense is not None:
         model_name = f"defended_{args.defense}_{model_name}"
+        
+    if config.record_model_arch:
+        model_name = f"{get_arch(args).__name__}_{model_name}"
     return model_name
 
 def get_model_dir(args, cleanse=False, defense=False):
@@ -63,7 +68,7 @@ def get_model_dir(args, cleanse=False, defense=False):
 def get_dir_core(args, include_model_name=False, include_poison_seed=False):
     ratio = '%.3f' % args.poison_rate
     # ratio = '%.1f' % (args.poison_rate * 100) + '%'
-    if args.poison_type in ['trojannn', 'BadEncoder']:
+    if args.poison_type in ['trojannn', 'BadEncoder', 'SRA']:
         dir_core = '%s_%s' % (args.dataset, args.poison_type)
     elif args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
         blend_alpha = '%.3f' % args.alpha
@@ -89,7 +94,7 @@ def get_dir_core(args, include_model_name=False, include_poison_seed=False):
 def get_poison_set_dir(args):
     ratio = '%.3f' % args.poison_rate
     # ratio = '%.1f' % (args.poison_rate * 100) + '%'
-    if args.poison_type in ['trojannn', 'BadEncoder']:
+    if args.poison_type in ['trojannn', 'BadEncoder', 'SRA']:
         poison_set_dir = 'models'
         return poison_set_dir
     elif args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
@@ -106,7 +111,7 @@ def get_poison_set_dir(args):
         poison_set_dir = 'poisoned_train_set/%s/%s_%s' % (args.dataset, args.poison_type, ratio)
     
     if config.record_poison_seed: poison_set_dir = f'{poison_set_dir}_poison_seed={config.poison_seed}' # debug
-    if config.record_model_arch: poison_set_dir = f'{poison_set_dir}_arch={get_arch(args).__name__}'
+    # if config.record_model_arch: poison_set_dir = f'{poison_set_dir}_arch={get_arch(args).__name__}'
     return poison_set_dir
 
 def get_arch(args):
@@ -114,6 +119,18 @@ def get_arch(args):
         if args.dataset == 'gtsrb':
             from utils.BadEncoder_model import CIFAR2GTSRB
             return CIFAR2GTSRB
+        else: raise NotImplementedError
+    if args.poison_type == 'SRA':
+        if args.dataset == 'cifar10':
+            from utils.SRA.cifar_10.vgg import vgg16_bn
+            return vgg16_bn
+            # from utils.SRA.cifar_10.resnet import resnet110
+            # return resnet110
+            # from utils.SRA.cifar_10.mobilenetv2 import mobilenetv2
+            # return mobilenetv2
+        elif args.dataset == 'imagenet':
+            from utils.SRA.imagenet.vgg import vgg16_bn
+            return vgg16_bn
         else: raise NotImplementedError
     else:
         return config.arch[args.dataset]
@@ -217,6 +234,28 @@ def get_transforms(args):
             denormalizer = transforms.Compose([
                 transforms.Normalize([-0.4914/0.247, -0.4822/0.243, -0.4465/0.261], [1/0.247, 1/0.243, 1/0.261])
             ])
+        
+        if args.poison_type == 'SRA':
+            data_transform_aug = transforms.Compose([
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomCrop(32, 4),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+            data_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+            normalizer = transforms.Compose([
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+            denormalizer = transforms.Compose([
+                transforms.Normalize([-0.485/0.229, -0.456/0.224, -0.406/0.225], [1/0.229, 1/0.224, 1/0.225])
+            ])
     elif args.dataset == 'imagenette':
         if args.no_normalize:
             data_transform_aug = transforms.Compose([
@@ -255,7 +294,32 @@ def get_transforms(args):
             denormalizer = transforms.Compose([
                 transforms.Normalize([-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225], [1 / 0.229, 1 / 0.224, 1 / 0.225])
             ])
-    elif args.dataset == 'imagenet' or args.dataset == 'ember':
+    elif args.dataset == 'imagenet':
+        data_transform_aug = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip()
+        ])
+        data_transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            transforms.CenterCrop(224),
+        ])
+        trigger_transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            transforms.CenterCrop(224),
+        ])
+        normalizer = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        denormalizer = transforms.Compose([
+            transforms.Normalize([-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225], [1 / 0.229, 1 / 0.224, 1 / 0.225])
+        ])
+        
+    elif args.dataset == 'ember':
         data_transform_aug = data_transform = trigger_transform = normalizer = denormalizer = None
     else: raise NotImplementedError()
     
@@ -270,7 +334,7 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
 
     if trigger_name is None:
         if dataset_name != 'imagenette':
-            trigger_name = config.trigger_default[poison_type]
+            trigger_name = config.trigger_default[dataset_name][poison_type]
         else:
             if poison_type == 'badnet':
                 trigger_name = 'badnet_high_res.png'
@@ -279,7 +343,7 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
 
     if dataset_name in ['gtsrb','cifar10', 'cifar100']:
         img_size = 32
-    elif dataset_name == 'imagenette':
+    elif dataset_name == 'imagenette' or dataset_name == 'imagenet':
         img_size = 224
     else:
         raise NotImplementedError('<Undefined> Dataset = %s' % dataset_name)
@@ -302,7 +366,7 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
                                     (1.0 / 0.2672, 1.0 / 0.2564, 1.0 / 0.2629)),
         ])
         num_classes = 43
-    elif dataset_name == 'imagenette':
+    elif dataset_name == 'imagenette' or dataset_name == 'imagenet':
         normalizer = transforms.Compose([
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
@@ -321,12 +385,19 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
     if poison_type in ['basic', 'badnet', 'blend', 'clean_label', 'refool',
                        'adaptive_blend', 'adaptive_patch', 'adaptive_k_way',
                        'SIG', 'TaCT', 'WaNet', 'SleeperAgent', 'none',
-                       'badnet_all_to_all', 'trojan']:
+                       'badnet_all_to_all', 'trojan', 'SRA']:
 
         if trigger_transform is None:
             trigger_transform = transforms.Compose([
                 transforms.ToTensor()
             ])
+        
+        # trigger mask transform; remove `Normalize`!
+        trigger_mask_transform_list = []
+        for t in trigger_transform.transforms:
+            if "Normalize" not in t.__class__.__name__:
+                trigger_mask_transform_list.append(t)
+        trigger_mask_transform = transforms.Compose(trigger_mask_transform_list)
 
         if trigger_name != 'none': # none for SIG
             trigger_path = os.path.join(config.triggers_dir, trigger_name)
@@ -337,10 +408,9 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
 
             if os.path.exists(trigger_mask_path):  # if there explicitly exists a trigger mask (with the same name)
                 trigger_mask = Image.open(trigger_mask_path).convert("RGB")
-                trigger_mask = transforms.ToTensor()(trigger_mask)[0]  # only use 1 channel
+                trigger_mask = trigger_mask_transform(trigger_mask)[0]  # only use 1 channel
             else:  # by default, all black pixels are masked with 0's
-                temp_trans = transforms.ToTensor()
-                trigger_map = temp_trans(trigger)
+                trigger_map = trigger_mask_transform(trigger)
                 trigger_mask = torch.logical_or(torch.logical_or(trigger_map[0] > 0, trigger_map[1] > 0), trigger_map[2] > 0).float()
 
             trigger = trigger_transform(trigger)
@@ -418,6 +488,14 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
         elif poison_type == 'SleeperAgent':
             from poison_tool_box import SleeperAgent
             poison_transform = SleeperAgent.poison_transform(random_patch=False, img_size=img_size, target_class=target_class, denormalizer=denormalizer, normalizer=normalizer)
+        
+        elif poison_type == 'SRA':
+            if dataset_name not in ['cifar10', 'imagenet']:
+                raise NotImplementedError()
+            
+            from other_attacks_tool_box import SRA
+            poison_transform = SRA.poison_transform(img_size=img_size, trigger=trigger, mask=trigger_mask, target_class=target_class)
+            return poison_transform
         
         else: # 'none'
             from poison_tool_box import none

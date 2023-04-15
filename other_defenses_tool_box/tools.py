@@ -114,11 +114,11 @@ def generate_dataloader(dataset='cifar10', dataset_path='./data/', batch_size=12
             ])
         dataset_path = os.path.join(dataset_path, 'imagenette2')
         if split == 'train':
-            train_data = datasets.ImageFolder(os.path.join(os.path.join(data_dir, 'imagenette2'), 'train'), data_transform)
+            train_data = datasets.ImageFolder(os.path.join(os.path.join(dataset_path, 'imagenette2'), 'train'), data_transform)
             train_data_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=4, pin_memory=True)
             return train_data_loader
         elif split == 'std_test' or split == 'full_test':
-            test_data = datasets.ImageFolder(os.path.join(os.path.join(data_dir, 'imagenette2'), 'val'), data_transform)
+            test_data = datasets.ImageFolder(os.path.join(os.path.join(dataset_path, 'imagenette2'), 'val'), data_transform)
             test_data_loader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=4, pin_memory=True)
             return test_data_loader
         elif split == 'valid' or split == 'val':
@@ -134,6 +134,46 @@ def generate_dataloader(dataset='cifar10', dataset_path='./data/', batch_size=12
             test_set_label_path = os.path.join(test_set_dir, 'labels')
             test_set = IMG_Dataset(data_dir=test_set_img_dir, label_path=test_set_label_path, transforms=data_transform)
             test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=True, drop_last=drop_last, num_workers=4, pin_memory=True)
+            return test_loader
+    elif dataset == 'imagenet':
+        from utils import imagenet
+        if data_transform is None:
+            data_transform = transforms.Compose([
+                transforms.Resize((256, 256)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                transforms.CenterCrop(224),
+            ])
+        dataset_path = config.imagenet_dir
+        train_set_dir = os.path.join(config.imagenet_dir, 'train')
+        test_set_dir = os.path.join(config.imagenet_dir, 'val')
+        if split == 'train':
+            train_data = imagenet.imagenet_dataset(directory=train_set_dir, data_transform=data_transform, poison_directory=None,
+                                             poison_indices=None, target_class=config.target_class['imagenet'], num_classes=1000)
+            train_data_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=32, pin_memory=True)
+            return train_data_loader
+        elif split == 'std_test' or split == 'full_test':
+            test_data = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, data_transform=data_transform,
+                                                label_file=imagenet.test_set_labels, num_classes=1000)
+            train_data_loader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=32, pin_memory=True)
+            return test_data_loader
+        elif split == 'valid' or split == 'val':
+            test_data = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, data_transform=data_transform,
+                                                label_file=imagenet.test_set_labels, num_classes=1000)
+            val_split_meta_dir = os.path.join('clean_set', 'imagenet', 'clean_split')
+            val_split_indices = torch.load(os.path.join(val_split_meta_dir, 'clean_split_indices'))
+            val_set = torch.utils.data.Subset(test_data, val_split_indices)
+            
+            val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=32, pin_memory=True)
+            return val_loader
+        elif split == 'test':
+            test_data = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, data_transform=data_transform,
+                                                label_file=imagenet.test_set_labels, num_classes=1000)
+            test_split_meta_dir = os.path.join('clean_set', 'imagenet', 'test_split')
+            test_indices = torch.load(os.path.join(test_split_meta_dir, 'test_indices'))
+            test_data = torch.utils.data.Subset(test_data, test_indices)
+            
+            test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=32, pin_memory=True)
             return test_loader
     else:
         print('<To Be Implemented> Dataset = %s' % dataset)

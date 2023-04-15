@@ -15,15 +15,22 @@ parser.add_argument('-poison_type', type=str,  required=False,
 parser.add_argument('-poison_rate', type=float,  required=False,
                     choices=default_args.parser_choices['poison_rate'],
                     default=default_args.parser_default['poison_rate'])
+parser.add_argument('-alpha', type=float,  required=False,
+                    default=default_args.parser_default['alpha'])
 parser.add_argument('-trigger', type=str, required=False,
                     default=None)
 args = parser.parse_args()
 args.dataset = 'imagenet'
-args.alpha= 0.2
 tools.setup_seed(0)
 
 if args.trigger is None:
-    args.trigger = imagenet.triggers[args.poison_type]
+    args.trigger = config.trigger_default[args.dataset][args.poison_type]
+
+print(f"Please notice for ImageNet, the trigger '{args.trigger}' will be resized to 256x256! Specifically:\n\
+1. The **training** images are first resized to 256x256 and then randomly cropped to 224x224. \
+And while poisoning the **training** set, the trigger is resized to 256x256 and then planted into the 256x256 clean images.\n\
+2. The **test** images are first resized to 256x256 and then center cropped to 224x224.)\
+So while poisoning the **test** inputs, the trigger is resized to 256x256, center cropped to 224x224, and then added to the 224x224 clean images")
 
 if args.poison_type not in ['none', 'badnet', 'trojan', 'blend']:
     raise NotImplementedError('%s is not implemented on ImageNet' % args.poison_type)
@@ -63,11 +70,15 @@ num_imgs, img_id_to_path, img_labels = imagenet.assign_img_identifier(train_set_
 
 transform_to_tensor = transforms.Compose([
     transforms.Resize((256, 256)),
-    # transforms.Resize(256),
     transforms.ToTensor(),
 ])
 
-poison_transform = imagenet.get_poison_transform_for_imagenet(args.poison_type)
+# poison_transform = imagenet.get_poison_transform_for_imagenet(args.poison_type)
+poison_transform = supervisor.get_poison_transform(poison_type=args.poison_type, dataset_name=args.dataset,
+                                                    target_class=config.target_class[args.dataset], trigger_transform=transform_to_tensor,
+                                                    is_normalized_input=True,
+                                                    alpha=args.alpha,
+                                                    trigger_name=args.trigger, args=args)
 
 
 cnt = 0
@@ -75,8 +86,8 @@ tot = len(poison_indices)
 print('# poison samples = %d' % tot)
 for pid in poison_indices:
     cnt+=1
-    ori_img = transform_to_tensor(Image.open( os.path.join(train_set_dir, img_id_to_path[pid]) ).convert("RGB"))
-    poison_img, _ = poison_transform.transform(ori_img, None)
+    ori_img = transform_to_tensor(Image.open(os.path.join(train_set_dir, img_id_to_path[pid])).convert("RGB"))
+    poison_img, _ = poison_transform.transform(ori_img, torch.zeros(ori_img.shape[0]))
 
     cls_path = os.path.join(poison_imgs_dir, idx_to_class[img_labels[pid]])
     if not os.path.exists(cls_path):
