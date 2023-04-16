@@ -393,11 +393,12 @@ class ABL(BackdoorDefense):
         # model_ascent = arch(depth=16, num_classes=self.num_classes, widen_factor=1, dropRate=0)
         arch = supervisor.get_arch(args)
         model_ascent = arch(num_classes=self.num_classes)
+        model_ascent = nn.DataParallel(model_ascent)
         model_ascent = model_ascent.cuda()
         print('finished model init...')
 
         # initialize optimizer
-        optimizer = torch.optim.SGD(model_ascent.parameters(),
+        optimizer = torch.optim.SGD(model_ascent.module.parameters(),
                                     lr=self.tuning_lr,
                                     momentum=0.9,
                                     weight_decay=1e-4,
@@ -429,7 +430,7 @@ class ABL(BackdoorDefense):
         # save isolated model
         self.save_checkpoint({
             'epoch': self.isolation_epochs,
-            'state_dict': model_ascent.state_dict(),
+            'state_dict': model_ascent.module.state_dict(),
             'optimizer': optimizer.state_dict(),
         }, self.isolation_epochs, True, phase='isolation')
         
@@ -446,11 +447,12 @@ class ABL(BackdoorDefense):
         model_ascent = arch(num_classes=self.num_classes)
         self.load_checkpoint(model=model_ascent,
                             filepath=os.path.join(self.folder_path, 'abl_%s_isolation_epoch=%d_seed=%d.tar' % (supervisor.get_dir_core(self.args), self.isolation_epochs, self.args.seed)))
+        model_ascent = nn.DataParallel(model_ascent)
         model_ascent = model_ascent.cuda()
         print('Loaded ascent model (isolation)!')
 
         # initialize optimizer
-        optimizer = torch.optim.SGD(model_ascent.parameters(),
+        optimizer = torch.optim.SGD(model_ascent.module.parameters(),
                                     lr=0.1,
                                     momentum=0.9,
                                     weight_decay=1e-4,
@@ -498,7 +500,7 @@ class ABL(BackdoorDefense):
             # save finetuned model
             self.save_checkpoint({
                 'epoch': self.finetuning_epochs,
-                'state_dict': model_ascent.state_dict(),
+                'state_dict': model_ascent.module.state_dict(),
                 'optimizer': optimizer.state_dict(),
             }, self.finetuning_epochs, True, phase='finetuning')
         elif os.path.exists(os.path.join(self.folder_path, 'abl_%s_finetuning_epoch=%d_seed=%d.tar' % (supervisor.get_dir_core(self.args), self.finetuning_epochs, self.args.seed))):
@@ -509,7 +511,7 @@ class ABL(BackdoorDefense):
 
         print('----------- Model unlearning --------------')
         # freeze batchnorm runtime estimation
-        for name, module in list(model_ascent.named_modules()):
+        for name, module in list(model_ascent.module.named_modules()):
             if isinstance(module, nn.BatchNorm2d):
                 module.momentum = 0
 
@@ -530,12 +532,12 @@ class ABL(BackdoorDefense):
         # save unlearned model
         self.save_checkpoint({
             'epoch': self.unlearning_epochs,
-            'state_dict': model_ascent.state_dict(),
+            'state_dict': model_ascent.module.state_dict(),
             'optimizer': optimizer.state_dict(),
         }, self.unlearning_epochs, True, phase='unlearning')
 
         save_path = os.path.join(self.folder_path, "ABL_%s_seed=%d.pt" % (supervisor.get_dir_core(args, include_model_name=False, include_poison_seed=config.record_poison_seed), self.args.seed))
-        torch.save(model_ascent.state_dict(), save_path)
+        torch.save(model_ascent.module.state_dict(), save_path)
         print("[Save] Unlearned model saved to %s" % save_path)
 
     def adjust_learning_rate(self, optimizer, epoch):

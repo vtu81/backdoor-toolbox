@@ -83,7 +83,7 @@ class NAD(BackdoorDefense):
         print('finished teacher model init...')
 
         # initialize optimizer
-        optimizer = torch.optim.SGD(teacher.parameters(),
+        optimizer = torch.optim.SGD(teacher.module.parameters(),
                                     lr=self.lr,
                                     momentum=0.9,
                                     weight_decay=1e-4,
@@ -117,7 +117,7 @@ class NAD(BackdoorDefense):
             # best_bad_acc = acc_bad
             
             t_model_path = os.path.join(self.folder_path, 'NAD_T_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
-            self.save_checkpoint(teacher.state_dict(), True, t_model_path)
+            self.save_checkpoint(teacher.module.state_dict(), True, t_model_path)
 
     def train_erase(self):
         """
@@ -131,6 +131,7 @@ class NAD(BackdoorDefense):
         t_model_path = os.path.join(self.folder_path, 'NAD_T_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
         checkpoint = torch.load(t_model_path)
         teacher.load_state_dict(checkpoint)
+        teacher = nn.DataParallel(teacher)
         teacher = teacher.cuda()
         teacher.eval()
 
@@ -138,17 +139,18 @@ class NAD(BackdoorDefense):
         s_model_path = supervisor.get_model_dir(self.args)
         checkpoint = torch.load(s_model_path)
         student.load_state_dict(checkpoint)
+        student = nn.DataParallel(student)
         student = student.cuda()
         student.train()
         print('finished student model init...')
 
         nets = {'snet': student, 'tnet': teacher}
 
-        for param in teacher.parameters():
+        for param in teacher.module.parameters():
             param.requires_grad = False
 
         # initialize optimizer
-        optimizer = torch.optim.SGD(student.parameters(),
+        optimizer = torch.optim.SGD(student.module.parameters(),
                                     lr=self.lr,
                                     momentum=0.9,
                                     weight_decay=1e-4,
@@ -186,7 +188,7 @@ class NAD(BackdoorDefense):
             best_bad_acc = acc_bad
             
             erase_model_path = os.path.join(self.folder_path, 'NAD_E_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
-            self.save_checkpoint(student.state_dict(), is_best, erase_model_path)
+            self.save_checkpoint(student.module.state_dict(), is_best, erase_model_path)
 
     def test(self, model, criterion, epoch):
         losses = AverageMeter()

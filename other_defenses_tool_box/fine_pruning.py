@@ -47,7 +47,7 @@ class FP(BackdoorDefense):
         self.finetune_epoch = finetune_epoch
         self.max_allowed_acc_drop = max_allowed_acc_drop
 
-        for name, module in reversed(list(self.model.named_modules())):
+        for name, module in reversed(list(self.model.module.named_modules())):
             if isinstance(module, nn.Conv2d):
                 last_conv = module
                 self.prune_layer: str = name
@@ -77,11 +77,11 @@ class FP(BackdoorDefense):
         self.prune()
 
     def prune(self):
-        # for name, module in reversed(list(self.model.named_modules())):
+        # for name, module in reversed(list(self.model.module.named_modules())):
         #     if isinstance(module, nn.Conv2d):
         #         self.last_conv: nn.Conv2d = prune.identity(module, 'weight')
         #         break
-        for name, module in list(self.model.named_modules()):
+        for name, module in list(self.model.module.named_modules()):
             if isinstance(module, nn.Linear):
                 self.last_conv: nn.Linear = prune.identity(module, 'weight')
                 break
@@ -105,7 +105,7 @@ class FP(BackdoorDefense):
         
         # test pruned model and save
         result_file = os.path.join(self.folder_path, 'FP_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
-        torch.save(self.model.state_dict(), result_file)
+        torch.save(self.model.module.state_dict(), result_file)
         print('Fine-Pruned Model Saved at:', result_file)
         # val_atk(self.args, self.model)
         test(self.model, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))

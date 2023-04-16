@@ -333,13 +333,14 @@ class NC(BackdoorDefense):
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ])
             batch_size = 256
-            lr = 0.02
+            lr = 0.02 # IMAGENET1K_V1
+            # lr = 0.001 # ViT, IMAGENET1K_SWAG_LINEAR_V1
         else:
             raise NotImplementedError()
         train_data = DatasetCL(0.1, full_dataset=full_train_set, transform=data_transform_aug, poison_ratio=0.2, mark=mark, mask=mask)
         train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=32, pin_memory=True)
         criterion = nn.CrossEntropyLoss().cuda()
-        optimizer = torch.optim.SGD(self.model.parameters(), lr, momentum=self.momentum, weight_decay=self.weight_decay)
+        optimizer = torch.optim.SGD(self.model.module.parameters(), lr, momentum=self.momentum, weight_decay=self.weight_decay)
 
         val_atk(self.args, self.model)
         
@@ -363,7 +364,7 @@ class NC(BackdoorDefense):
             print('\n<Unlearning> Train Epoch: {} \tLoss: {:.6f}, Train Acc: {:.6f}, lr: {:.2f}'.format(epoch, loss.item(), train_acc, optimizer.param_groups[0]['lr']))
             val_atk(self.args, self.model)
             
-        torch.save(self.model.state_dict(), supervisor.get_model_dir(self.args, defense=True))
+        torch.save(self.model.module.state_dict(), supervisor.get_model_dir(self.args, defense=True))
         print("Saved repaired model to {}".format(supervisor.get_model_dir(self.args, defense=True)))
 
 class DatasetCL(Dataset):

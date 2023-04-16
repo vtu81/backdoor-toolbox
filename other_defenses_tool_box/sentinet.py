@@ -74,7 +74,7 @@ class SentiNet(BackdoorDefense):
             fooled_num = 0
             avgconf = 0
             
-            model_gradcam = GradCAM(dict(type='resnet', arch=self.model, layer_name='layer4', input_size=(224, 224)), False)
+            model_gradcam = GradCAM(dict(type='resnet', arch=self.model.module, layer_name='layer4', input_size=(224, 224)), False)
             gradcam_mask, _ = model_gradcam(_input[0].unsqueeze(0))
             gradcam_mask = gradcam_mask.squeeze(0)
             v, _ = torch.topk(gradcam_mask.reshape(-1), k=int(len(gradcam_mask.reshape(-1)) * 0.15))
@@ -208,7 +208,7 @@ class SentiNet(BackdoorDefense):
             fooled_num = 0
             avgconf = 0
             
-            model_gradcam = GradCAM(dict(type='resnet', arch=self.model, layer_name='layer4', input_size=(224, 224)), False)
+            model_gradcam = GradCAM(dict(type='resnet', arch=self.model.module, layer_name='layer4', input_size=(224, 224)), False)
             gradcam_mask, _ = model_gradcam(_input[0].unsqueeze(0))
             gradcam_mask = gradcam_mask.squeeze(0)
             v, _ = torch.topk(gradcam_mask.reshape(-1), k=int(len(gradcam_mask.reshape(-1)) * 0.15))

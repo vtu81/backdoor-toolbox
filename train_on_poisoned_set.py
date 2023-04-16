@@ -330,8 +330,8 @@ else:
 
 
 # Check if need to resume from the checkpoint
-if os.path.exists(os.path.join(poison_set_dir, "meta_info_seed={}".format(args.seed))):
-    meta_info = torch.load(os.path.join(poison_set_dir, "meta_info_seed={}".format(args.seed)))
+if os.path.exists(os.path.join(poison_set_dir, "meta_info_{}".format(supervisor.get_model_name(args)))):
+    meta_info = torch.load(os.path.join(poison_set_dir, "meta_info_{}".format(supervisor.get_model_name(args))))
 else:
     meta_info = dict()
     meta_info['epoch'] = 0

@@ -91,6 +91,7 @@ class BackdoorAttack():
         else:
             print("Model '{}' not found.".format(model_path))
         
+        self.model = torch.nn.DataParallel(self.model)
         self.model = self.model.cuda()
         self.model.eval()
         

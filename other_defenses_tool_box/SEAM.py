@@ -62,7 +62,7 @@ class SEAM(BackdoorDefense):
         self.criterion = torch.nn.CrossEntropyLoss().cuda()
 
     def detect(self):
-        optimizer = torch.optim.SGD(self.model.parameters(),
+        optimizer = torch.optim.SGD(self.model.module.parameters(),
                                     lr=0.1,
                                     momentum=0.9,
                                     weight_decay=1e-4,

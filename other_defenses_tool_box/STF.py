@@ -72,7 +72,7 @@ class STF(BackdoorDefense):
         self.criterion = torch.nn.CrossEntropyLoss().cuda()
 
     def detect(self):
-        optimizer = torch.optim.SGD(self.model.parameters(),
+        optimizer = torch.optim.SGD(self.model.module.parameters(),
                                     lr=self.lr_base)
         custom_lr = CustomLR(phase1_init_lr=self.lr_base, phase1_final_lr=self.init_lr, phase2_init_lr=self.lr_base,
                              phase2_final_lr=self.update_lr, phase1_steps=10, phase2_steps=10, phase1_total_steps=40)

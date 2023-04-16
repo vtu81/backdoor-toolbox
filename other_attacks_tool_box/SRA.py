@@ -31,7 +31,7 @@ class attacker(BackdoorAttack):
         super().__init__(args)
         
         self.args = args
-        self.clean_model = supervisor.get_arch(args)(num_classes=self.num_classes)
+        self.model = supervisor.get_arch(args)(num_classes=self.num_classes)
         
         if args.dataset == 'cifar10':
             if 'vgg' in supervisor.get_arch(args).__name__:
@@ -126,10 +126,7 @@ class attacker(BackdoorAttack):
             subnet_replace_vgg16_bn_imagenet(complete_model=self.model, narrow_model=self.narrow_model, target_class=self.target_class, randomly_select=True)
         
         print("[After SRA]")
-        # if args.dataset == 'cifar10':
         tools.test(model=self.model, test_loader=test_set_loader, poison_test=True, poison_transform=poison_transform, num_classes=self.num_classes)
-        # elif args.dataset == 'imagenet':
-        #     tools.test_imagenet(self.model, test_set_loader)
         
         save_path = supervisor.get_model_dir(args)
         torch.save(self.model.state_dict(), save_path)
