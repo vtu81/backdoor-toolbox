@@ -385,7 +385,7 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
     if poison_type in ['basic', 'badnet', 'blend', 'clean_label', 'refool',
                        'adaptive_blend', 'adaptive_patch', 'adaptive_k_way',
                        'SIG', 'TaCT', 'WaNet', 'SleeperAgent', 'none',
-                       'badnet_all_to_all', 'trojan', 'SRA']:
+                       'badnet_all_to_all', 'trojan', 'SRA', 'bpp']:
 
         if trigger_transform is None:
             trigger_transform = transforms.Compose([
@@ -495,6 +495,16 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
             
             from other_attacks_tool_box import SRA
             poison_transform = SRA.poison_transform(img_size=img_size, trigger=trigger, mask=trigger_mask, target_class=target_class)
+            return poison_transform
+        
+        elif poison_type == 'bpp':
+            if dataset_name not in ['cifar10']:
+                raise NotImplementedError()
+            
+            from other_attacks_tool_box import bpp
+            poison_transform = bpp.poison_transform(img_size=img_size, denormalizer=denormalizer, normalizer=normalizer,
+                                                    mode="all2one", dithering=True, squeeze_num=8,
+                                                    num_classes=num_classes, target_class=target_class)
             return poison_transform
         
         else: # 'none'

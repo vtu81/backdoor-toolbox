@@ -46,6 +46,7 @@ trigger_default = {
         'BadEncoder': 'none',
         'SRA': 'phoenix_corner_32.png',
         'trojan': 'trojan_square_32.png',
+        'bpp': 'none',
     },
     'gtsrb': {
         'none' : 'none',
