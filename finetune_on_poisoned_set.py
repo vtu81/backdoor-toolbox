@@ -63,6 +63,9 @@ if args.dataset != 'ember':
 else:
     model_path = os.path.join('poisoned_train_set', 'ember', args.ember_options, 'backdoored_model.pt')
 
+poison_set_dir = supervisor.get_poison_set_dir(args)
+if not os.path.exists(poison_set_dir):
+    os.makedirs(poison_set_dir)
 
 # tools.setup_seed(args.seed)
 
@@ -142,50 +145,6 @@ else:
 
 
 
-
-# Set Up Poisoned Set
-
-if args.dataset != 'ember' and args.dataset != 'imagenet':
-    poison_set_dir = supervisor.get_poison_set_dir(args)
-    if os.path.exists(os.path.join(poison_set_dir, 'data')): # if old version
-        poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
-    if os.path.exists(os.path.join(poison_set_dir, 'imgs')): # if new version
-        poisoned_set_img_dir = os.path.join(poison_set_dir, 'imgs')
-    poisoned_set_label_path = os.path.join(poison_set_dir, 'labels')
-    poison_indices_path = os.path.join(poison_set_dir, 'poison_indices')
-
-
-    print('dataset : %s' % poisoned_set_img_dir)
-
-    poisoned_set = tools.IMG_Dataset(data_dir=poisoned_set_img_dir,
-                                     label_path=poisoned_set_label_path, transforms=data_transform if args.no_aug else data_transform_aug)
-
-    poisoned_set_loader = torch.utils.data.DataLoader(
-        poisoned_set,
-        batch_size=batch_size, shuffle=True, worker_init_fn=tools.worker_init, **kwargs)
-
-elif args.dataset == 'imagenet':
-
-    poison_set_dir = supervisor.get_poison_set_dir(args)
-    poison_indices_path = os.path.join(poison_set_dir, 'poison_indices')
-    poisoned_set_img_dir = os.path.join(poison_set_dir, 'data')
-    print('dataset : %s' % poison_set_dir)
-
-    poison_indices = torch.load(poison_indices_path)
-
-    train_set_dir = os.path.join(config.imagenet_dir, 'train')
-    test_set_dir = os.path.join(config.imagenet_dir, 'val')
-
-    from utils import imagenet
-    poisoned_set = imagenet.imagenet_dataset(directory=train_set_dir, data_transform=data_transform_aug, poison_directory=poisoned_set_img_dir,
-                                             poison_indices = poison_indices, target_class=config.target_class['imagenet'],
-                                             num_classes=1000)
-
-    poisoned_set_loader = torch.utils.data.DataLoader(
-        poisoned_set,
-        batch_size=batch_size, shuffle=True, worker_init_fn=tools.worker_init, **kwargs)
-
-
 if args.dataset != 'imagenet':
 
     # Set Up Test Set for Debug & Evaluation
@@ -261,6 +220,16 @@ if args.dataset == 'imagenet':
     # if 'vit' in arch.__name__:
     #     for param in model.encoder.parameters():
     #         param.requires_grad = False
+elif args.dataset == 'cifar10' or args.dataset == 'gtsrb':
+    model = arch(num_classes=num_classes)
+    poison_type = args.poison_type
+    poison_rate = args.poison_rate
+    args.poison_type = 'none'
+    args.poison_rate = 0
+    clean_model_dir = supervisor.get_model_dir(args)
+    model.load_state_dict(torch.load(clean_model_dir))
+    args.poison_type = poison_type
+    args.poison_rate = poison_rate
 else:
     model = arch(num_classes=num_classes)
 
@@ -326,7 +295,24 @@ if trigger_name != 'none': # none for SIG
     trigger_mask = trigger_mask
 
 
-if args.dataset == 'imagenet':
+if args.dataset == 'cifar10':
+    ratio = 1.0
+    poison_ratio = 0.2
+    
+    full_train_set = datasets.CIFAR10(root=os.path.join(config.data_dir, 'cifar10'), train=True, download=True, transform=data_transform_aug)
+    batch_size = 128
+    lr = 0.01
+elif args.dataset == 'gtsrb':
+    ratio = 1.0
+    poison_ratio = 0.2
+    
+    full_train_set = datasets.GTSRB(os.path.join(config.data_dir, 'gtsrb'), split='train', download=True, transform=data_transform_aug)
+    batch_size = 128
+    lr = 0.001
+elif args.dataset == 'imagenet':
+    ratio = 0.1
+    poison_ratio = 0.2
+    
     from utils import imagenet
     train_set_dir = os.path.join(config.imagenet_dir, 'train')
     full_train_set = imagenet.imagenet_dataset(directory=train_set_dir, data_transform=data_transform_aug,
@@ -338,8 +324,7 @@ else:
     raise NotImplementedError()
 
 
-ratio = 0.1
-poison_ratio = 0.2
+
 from torch.utils.data import DataLoader, Dataset, Subset
 id_set = list(range(0, len(full_train_set)))
 random.shuffle(id_set)

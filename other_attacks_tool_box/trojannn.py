@@ -273,18 +273,20 @@ class attacker(BackdoorAttack):
                 transforms.RandomCrop(32, 4),
                 transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
             ])
-            retrain_lr = 0.1
+            retrain_lr = 0.01
+            poison_ratio = 0.1
         elif self.args.dataset == 'gtsrb':
             full_train_set = datasets.GTSRB(root=os.path.join(config.data_dir, 'gtsrb'), split='train', download=False, transform=transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()]))
             self.data_transform_aug = transforms.Compose([
                 transforms.RandomRotation(15),
                 transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
             ])
-            retrain_lr = 0.1
+            retrain_lr = 0.001
+            poison_ratio = 0.1
         else:
             raise NotImplementedError()
         
-        train_data = DatasetPoison(1.0, full_dataset=full_train_set, transform=self.data_transform_aug, poison_ratio=0.1, mark=self.trigger_mark.cpu(), mask=self.trigger_mask.cpu(), target_class=config.target_class[self.args.dataset])
+        train_data = DatasetPoison(1.0, full_dataset=full_train_set, transform=self.data_transform_aug, poison_ratio=poison_ratio, mark=self.trigger_mark.cpu(), mask=self.trigger_mask.cpu(), target_class=config.target_class[self.args.dataset])
         train_loader = DataLoader(train_data, batch_size=128, shuffle=True, num_workers=32)
         
         # val_set_dir = os.path.join('clean_set', self.args.dataset, 'clean_split')
@@ -302,10 +304,11 @@ class attacker(BackdoorAttack):
         # self.test(self.model)
         tools.test(model=self.model, test_loader=test_set_loader, poison_test=True, poison_transform=poison_transform, num_classes=self.num_classes)
         
-        for epoch in range(10):
+        for epoch in range(1):
             # Retrain
             self.model.train()
-            self.model.freeze_feature()
+            # self.model.freeze_feature() # Standard trojannn only finetunes the last classifier layer, but leads to significant accuracy drop in our scenarios.
+                                          # To achieve negligible accuracy drop, we finetune the entire model instead.                
             preds = []
             labels = []
             for data, target in tqdm(train_loader):

@@ -20,7 +20,7 @@ import datetime
 from tqdm import tqdm
 from .tools import AverageMeter, generate_dataloader, tanh_func, to_numpy, jaccard_idx, normalize_mad, val_atk
 from . import BackdoorDefense
-from utils import supervisor
+from utils import supervisor, tools
 import random
 
 # Neural Cleanse!
@@ -300,7 +300,12 @@ class NC(BackdoorDefense):
         print(mark.shape, mask.shape)
 
         if self.args.dataset == 'cifar10':
-            full_train_set = datasets.CIFAR10(root=os.path.join(config.data_dir, 'cifar10'), train=True, download=True, transform=transforms.ToTensor())
+            clean_set_dir = os.path.join('clean_set', self.args.dataset, 'clean_split')
+            clean_set_img_dir = os.path.join(clean_set_dir, 'data')
+            clean_set_label_path = os.path.join(clean_set_dir, 'clean_labels')
+            full_train_set = tools.IMG_Dataset(data_dir=clean_set_img_dir,
+                                        label_path=clean_set_label_path, transforms=transforms.ToTensor())
+            # full_train_set = datasets.CIFAR10(root=os.path.join(config.data_dir, 'cifar10'), train=True, download=True, transform=transforms.ToTensor())
             data_transform_aug = transforms.Compose([
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomCrop(32, 4),
@@ -309,13 +314,18 @@ class NC(BackdoorDefense):
             batch_size = 128
             lr = 0.01
         elif self.args.dataset == 'gtsrb':
-            full_train_set = datasets.GTSRB(os.path.join(config.data_dir, 'gtsrb'), split='train', download=True, transform=transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()]))
+            clean_set_dir = os.path.join('clean_set', self.args.dataset, 'clean_split')
+            clean_set_img_dir = os.path.join(clean_set_dir, 'data')
+            clean_set_label_path = os.path.join(clean_set_dir, 'clean_labels')
+            full_train_set = tools.IMG_Dataset(data_dir=clean_set_img_dir,
+                                        label_path=clean_set_label_path, transforms=transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()]))
+            # full_train_set = datasets.GTSRB(os.path.join(config.data_dir, 'gtsrb'), split='train', download=True, transform=transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()]))
             data_transform_aug = transforms.Compose([
                 transforms.RandomRotation(15),
                 transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
             ])
             batch_size = 128
-            lr = 0.001
+            lr = 0.002
             
             if self.args.poison_type == 'BadEncoder':
                 data_transform_aug = transforms.Compose([
@@ -326,18 +336,24 @@ class NC(BackdoorDefense):
                 lr = 0.0001
         elif self.args.dataset == 'imagenet':
             from utils import imagenet
-            train_set_dir = os.path.join(config.imagenet_dir, 'train')
-            full_train_set = imagenet.imagenet_dataset(directory=train_set_dir, data_transform=transforms.Compose([transforms.ToTensor(), transforms.Resize((256, 256)), transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip()]),
+            # train_set_dir = os.path.join(config.imagenet_dir, 'train')
+            clean_set_dir = os.path.join(config.imagenet_dir, 'val')
+            full_train_set = imagenet.imagenet_dataset(directory=clean_set_dir, data_transform=transforms.Compose([transforms.ToTensor(), transforms.Resize((256, 256)), transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip()]),
                                                        poison_directory=None, poison_indices=None, target_class=config.target_class['imagenet'], num_classes=1000)
+            
+            clean_split_meta_dir = os.path.join('clean_set', self.args.dataset, 'clean_split')
+            clean_indices = torch.load(os.path.join(clean_split_meta_dir, 'clean_split_indices'))
+            full_train_set = torch.utils.data.Subset(full_train_set, clean_indices)
+            
             data_transform_aug = transforms.Compose([
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ])
             batch_size = 256
-            lr = 0.02 # IMAGENET1K_V1
+            lr = 0.01 # IMAGENET1K_V1
             # lr = 0.001 # ViT, IMAGENET1K_SWAG_LINEAR_V1
         else:
             raise NotImplementedError()
-        train_data = DatasetCL(0.1, full_dataset=full_train_set, transform=data_transform_aug, poison_ratio=0.2, mark=mark, mask=mask)
+        train_data = DatasetCL(1.0, full_dataset=full_train_set, transform=data_transform_aug, poison_ratio=0.2, mark=mark, mask=mask)
         train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=32, pin_memory=True)
         criterion = nn.CrossEntropyLoss().cuda()
         optimizer = torch.optim.SGD(self.model.module.parameters(), lr, momentum=self.momentum, weight_decay=self.weight_decay)

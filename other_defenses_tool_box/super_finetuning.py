@@ -40,8 +40,8 @@ class CustomLR:
                         epoch % self.phase2_steps - self.phase2_steps) / self.phase2_steps
 
 
-class STF(BackdoorDefense):
-    name: str = 'STF'
+class SFT(BackdoorDefense):
+    name: str = 'SFT'
 
     def __init__(self, args, epochs=100, lr_base=3e-4, init_lr=0.1, update_lr=0.001):
         super().__init__(args)
@@ -80,7 +80,7 @@ class STF(BackdoorDefense):
         # forget set training
         for epoch in range(self.epochs):
             self.model.train()
-            for idx, (clean_img, labels) in enumerate(self.test_loader):
+            for idx, (clean_img, labels) in enumerate(self.val_loader):
                 clean_img = clean_img.cuda()  # batch * channels * height * width
                 labels = labels.cuda()  # batch
                 logits = self.model(clean_img)
@@ -89,7 +89,7 @@ class STF(BackdoorDefense):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                print("In epoch {}: The loss --- {}".format(epoch, loss))
+            print("<SFT> Epoch: {} \tLoss: {:.6f}".format(epoch, loss))
 
             scheduler.step()
 
