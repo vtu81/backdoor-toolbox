@@ -1,5 +1,5 @@
 import torch
-from other_defenses_tool_box import NC, STRIP, FP, ABL, NAD, SentiNet, ScaleUp, SEAM, SFT
+from other_defenses_tool_box import NC, STRIP, FP, ABL, NAD, SentiNet, ScaleUp, SEAM, SFT, NONE
 import argparse, config, os, sys
 from utils import supervisor, tools, default_args
 import time
@@ -174,7 +174,10 @@ elif args.defense == "SEAM":
 elif args.defense == "SFT":
     defense = SFT(args)
     defense.detect()
-
+elif args.defense == 'NONE':
+    # if args.dataset == 'cifar10':
+    defense = NONE(args, none_lr=1e-2, max_reset_fraction=0.03, epoch_num_1=200, epoch_num_2=40)
+    defense.detect()
 else:
     raise NotImplementedError()
 

@@ -132,6 +132,9 @@ def get_arch(args):
             from utils.SRA.imagenet.vgg import vgg16_bn
             return vgg16_bn
         else: raise NotImplementedError
+    if args.defense == 'NONE':
+        from other_defenses_tool_box.none.resnet import resnet18
+        return resnet18
     else:
         return config.arch[args.dataset]
 
