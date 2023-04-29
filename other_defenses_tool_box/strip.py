@@ -36,25 +36,22 @@ class STRIP(BackdoorDefense):
                                                 shuffle=True,
                                                 drop_last=True)
 
-    def detect(self):
+    def detect(self, inspect_correct_predition_only=True):
+        args = self.args
+        
+        test_set_loader = generate_dataloader(dataset=args.dataset, dataset_path=config.data_dir, split='test', data_transform=torchvision.transforms.ToTensor(), shuffle=False)
+        # loader = generate_dataloader(dataset=self.dataset, dataset_path=config.data_dir, batch_size=100, split='valid', shuffle=False, drop_last=False)
+
+
+        # i = 0
         clean_entropy = []
         poison_entropy = []
-        loader = generate_dataloader(dataset=self.dataset,
-                                    dataset_path=config.data_dir,
-                                    batch_size=100,
-                                    split='valid',
-                                    shuffle=True,
-                                    drop_last=False)
-        loader = tqdm(loader)
-        i = 0
-        for _input, _label in loader:
+        for _input, _label in tqdm(test_set_loader):
             # i += 1
             # if i > 20: break
 
             _input, _label = _input.cuda(), _label.cuda()
             poison_input, poison_label = self.poison_transform.transform(_input, _label)
-            # torchvision.utils.save_image(self.denormalizer(_input[0]), 'a.png')
-            # torchvision.utils.save_image(self.denormalizer(poison_input[0]), 'b.png')
             
             clean_entropy.append(self.check(_input, _label))
             poison_entropy.append(self.check(poison_input, poison_label))
@@ -63,9 +60,10 @@ class STRIP(BackdoorDefense):
         poison_entropy = torch.cat(poison_entropy).flatten().sort()[0]
 
         # Save        
-        _dict = {'clean': to_numpy(clean_entropy), 'poison': to_numpy(poison_entropy)}
-        result_file = os.path.join(self.folder_path, 'strip_%s.npy' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
-        np.save(result_file, _dict)
+        # _dict = {'clean': to_numpy(clean_entropy), 'poison': to_numpy(poison_entropy)}
+        # result_file = os.path.join(self.folder_path, 'strip_%s.npy' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
+        # np.save(result_file, _dict)
+        # print('File Saved at:', result_file)
 
         # Plot histogram
         plt.hist(to_numpy(clean_entropy), bins='doane', alpha=.8, label='Clean', edgecolor='black')
@@ -77,7 +75,6 @@ class STRIP(BackdoorDefense):
         plt.tight_layout()
         plt.savefig(hist_file)
         
-        print('File Saved at:', result_file)
         print('Histogram Saved at:', hist_file)
         print('Entropy Clean  Median:', float(clean_entropy.median()))
         print('Entropy Poison Median:', float(poison_entropy.median()))
@@ -85,18 +82,68 @@ class STRIP(BackdoorDefense):
         threshold_low = float(clean_entropy[int(self.defense_fpr * len(clean_entropy))])
         # threshold_high = float(clean_entropy[int((1 - self.defense_fpr) * len(clean_entropy))])
         threshold_high = np.inf
-        y_true = torch.cat((torch.zeros_like(clean_entropy), torch.ones_like(poison_entropy)))
-        entropy = torch.cat((clean_entropy, poison_entropy))
-        y_pred = torch.where(((entropy < threshold_low).int() + (entropy > threshold_high).int()).bool(),
-                             torch.ones_like(entropy), torch.zeros_like(entropy))
-        
         print(f'Inputs with entropy among thresholds ({threshold_low:5.3f}, {threshold_high:5.3f}) are considered benign.')
-        print('Filtered input num:', torch.eq(y_pred, 1).sum().item())
-        print('fpr:', (((clean_entropy < threshold_low).int().sum() + (clean_entropy > threshold_high).int().sum()) / len(clean_entropy)).item())
-        print("f1_score:", metrics.f1_score(y_true, y_pred))
-        print("precision_score:", metrics.precision_score(y_true, y_pred))
-        print("recall_score:", metrics.recall_score(y_true, y_pred))
-        print("accuracy_score:", metrics.accuracy_score(y_true, y_pred))
+        y_true = torch.cat((torch.zeros_like(clean_entropy), torch.ones_like(poison_entropy))).cpu().detach()
+        entropy = torch.cat((clean_entropy, poison_entropy)).cpu().detach()
+        y_pred = (entropy < threshold_low).cpu().detach()
+        y_score = -entropy
+        # y_pred = torch.where(((entropy < threshold_low).int() + (entropy > threshold_high).int()).bool(),
+        #                      torch.ones_like(entropy), torch.zeros_like(entropy)).cpu().detach()
+        
+        
+        
+        if inspect_correct_predition_only:
+            # Only consider:
+            #   1) clean inputs that are correctly predicted
+            #   2) poison inputs that successfully trigger the backdoor
+            clean_pred_correct_mask = []
+            poison_attack_success_mask = []
+            for batch_idx, (data, target) in enumerate(tqdm(test_set_loader)):
+                # on poison data
+                data, target = data.cuda(), target.cuda()
+                
+                
+                clean_output = self.model(data)
+                clean_pred = clean_output.argmax(dim=1)
+                mask = torch.eq(clean_pred, target) # only look at those samples that successfully attack the DNN
+                clean_pred_correct_mask.append(mask)
+                
+                
+                poison_data, poison_target = self.poison_transform.transform(data, target)
+                
+                if args.poison_type == 'TaCT':
+                    mask = torch.eq(target, config.source_class)
+                else:
+                    # remove backdoor data whose original class == target class
+                    mask = torch.not_equal(target, poison_target)
+                
+                poison_output = self.model(poison_data)
+                poison_pred = poison_output.argmax(dim=1)
+                mask = torch.logical_and(torch.eq(poison_pred, poison_target), mask) # only look at those samples that successfully attack the DNN
+                poison_attack_success_mask.append(mask)
+
+            clean_pred_correct_mask = torch.cat(clean_pred_correct_mask, dim=0)
+            poison_attack_success_mask = torch.cat(poison_attack_success_mask, dim=0)
+        
+            mask = torch.cat((clean_pred_correct_mask, poison_attack_success_mask), dim=0)
+            y_true = y_true[mask]
+            y_pred = y_pred[mask]
+            y_score = y_score[mask]
+        
+        fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score)
+        auc = metrics.auc(fpr, tpr)
+        tn, fp, fn, tp = metrics.confusion_matrix(y_true, y_pred).ravel()
+        print("TPR: {:.2f}".format(tp / (tp + fn) * 100))
+        print("FPR: {:.2f}".format(fp / (tn + fp) * 100))
+        print("AUC: {:.4f}".format(auc))
+        
+        
+        # print('Filtered input num:', torch.eq(y_pred, 1).sum().item())
+        # print('fpr:', (((clean_entropy < threshold_low).int().sum() + (clean_entropy > threshold_high).int().sum()) / len(clean_entropy)).item())
+        # print("f1_score:", metrics.f1_score(y_true, y_pred))
+        # print("precision_score:", metrics.precision_score(y_true, y_pred))
+        # print("recall_score:", metrics.recall_score(y_true, y_pred))
+        # print("accuracy_score:", metrics.accuracy_score(y_true, y_pred))
     
     def cleanse(self):
         """

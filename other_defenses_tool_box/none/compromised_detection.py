@@ -1,6 +1,5 @@
 import numpy as np
 import math
-import jenkspy
 from torch.autograd import Variable
 import torch.nn.functional as F
 
@@ -114,6 +113,8 @@ def analyze_neuros(model,arch,max_reset_fraction,lamda_l,lamda_h, \
                 weak_output_indexs = np.where(output_all[:,k]<lamda_l)
                 imgs_high_activation_times[:] = imgs_high_activation_times[:] + conv_activation_all_list[i][:,j]
     
+    print("Require jenkspy==0.2.0")
+    import jenkspy
     breaks = jenkspy.jenks_breaks(imgs_high_activation_times.reshape(-1, 1), nb_class=2)
     # print(breaks)
     poison_sample_index = np.where(imgs_high_activation_times>=breaks[1])[0].tolist()

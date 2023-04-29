@@ -1,5 +1,4 @@
 import torch
-from other_defenses_tool_box import NC, STRIP, FP, ABL, NAD, SentiNet, ScaleUp, SEAM, SFT, NONE
 import argparse, config, os, sys
 from utils import supervisor, tools, default_args
 import time
@@ -67,6 +66,7 @@ if args.log:
 start_time = time.perf_counter()
 
 if args.defense == 'NC':
+    from other_defenses_tool_box.neural_cleanse import NC
     defense = NC(
         args,
         epoch=30,
@@ -78,6 +78,7 @@ if args.defense == 'NC':
     )
     defense.detect()
 elif args.defense == 'STRIP':
+    from other_defenses_tool_box.strip import STRIP
     defense = STRIP(
         args,
         strip_alpha=1.0,
@@ -87,6 +88,7 @@ elif args.defense == 'STRIP':
     )
     defense.detect()
 elif args.defense == 'FP':
+    from other_defenses_tool_box.fine_pruning import FP
     if args.dataset == 'cifar10':
         defense = FP(
             args,
@@ -105,6 +107,7 @@ elif args.defense == 'FP':
         raise NotImplementedError()
     defense.detect()
 elif args.defense == 'ABL':
+    from other_defenses_tool_box.anti_backdoor_learning import ABL
     if args.dataset == 'cifar10':
         defense = ABL(
             args,
@@ -152,6 +155,7 @@ elif args.defense == 'ABL':
         )
         defense.detect()
 elif args.defense == 'NAD':
+    from other_defenses_tool_box.neural_attention_distillation import NAD
     defense = NAD(
         args,
         teacher_epochs=10,
@@ -159,6 +163,7 @@ elif args.defense == 'NAD':
     )
     defense.detect()
 elif args.defense == 'SentiNet':
+    from other_defenses_tool_box.sentinet import SentiNet
     defense = SentiNet(
         args,
         defense_fpr=0.1,
@@ -166,17 +171,25 @@ elif args.defense == 'SentiNet':
     )
     defense.detect()
 elif args.defense == 'ScaleUp':
+    from other_defenses_tool_box.scale_up import ScaleUp
     defense = ScaleUp(args)
     defense.detect()
 elif args.defense == "SEAM":
+    from other_defenses_tool_box.SEAM import SEAM
     defense = SEAM(args)
     defense.detect()
 elif args.defense == "SFT":
+    from other_defenses_tool_box.super_finetuning import SFT
     defense = SFT(args)
     defense.detect()
 elif args.defense == 'NONE':
+    from other_defenses_tool_box.NONE import NONE
     # if args.dataset == 'cifar10':
     defense = NONE(args, none_lr=1e-2, max_reset_fraction=0.03, epoch_num_1=200, epoch_num_2=40)
+    defense.detect()
+elif args.defense == 'Frequency':
+    from other_defenses_tool_box.frequency import Frequency
+    defense = Frequency(args)
     defense.detect()
 else:
     raise NotImplementedError()
