@@ -65,7 +65,7 @@ class SEAM(BackdoorDefense):
 
     def detect(self):
         optimizer = torch.optim.SGD(self.model.module.parameters(),
-                                    lr=0.75,
+                                    lr=0.05,
                                     momentum=0.9,
                                     weight_decay=1e-4,
                                     nesterov=True)
