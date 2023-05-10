@@ -62,7 +62,7 @@ def adjust_lr(optimizer, iteration, epoch, lr_base, lr_max1, lr_max2, init_phase
 class SFT(BackdoorDefense):
     name: str = 'SFT'
 
-    def __init__(self, args, epochs=100, lr_base=3e-2, lr_max1=5.0, lr_max2=0.1):
+    def __init__(self, args, epochs=100, lr_base=3e-2, lr_max1=2.5, lr_max2=0.05):
         super().__init__(args)
         self.args = args
         self.epochs = epochs
@@ -92,7 +92,7 @@ class SFT(BackdoorDefense):
         subset_size = 0.2
         subset_idx = random.sample(range(0, self.train_set_size), int(self.train_set_size * subset_size))
         self.sub_train_set = Subset(self.train_set, subset_idx)
-        self.sub_train_loader = DataLoader(self.sub_train_set, batch_size=256, shuffle=True)
+        self.sub_train_loader = DataLoader(self.sub_train_set, batch_size=100, shuffle=True)
         self.criterion = torch.nn.CrossEntropyLoss().cuda()
 
     def detect(self):
