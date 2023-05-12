@@ -27,14 +27,6 @@ class ScaleUp(BackdoorDefense):
         self.with_clean_data = with_clean_data
         # test set --- clean
         # std_test - > 10000 full, val -> 2000 (for detection), test -> 8000 (for accuracy)
-        self.test_loader = generate_dataloader(dataset=self.dataset,
-                                               dataset_path=config.data_dir,
-                                               batch_size=100,
-                                               split='test',
-                                               data_transform=self.data_transform,
-                                               shuffle=False,
-                                               drop_last=False,
-                                               )
 
         self.val_loader = generate_dataloader(dataset=self.dataset,
                                               dataset_path=config.data_dir,
@@ -48,8 +40,18 @@ class ScaleUp(BackdoorDefense):
         self.std = None
         self.init_spc_norm()
 
-    def detect(self, inspect_correct_predition_only=True):
+    def detect(self, inspect_correct_predition_only=True, noisy_test=False):
         args = self.args
+        
+        self.test_loader = generate_dataloader(dataset=self.dataset,
+                                               dataset_path=config.data_dir,
+                                               batch_size=100,
+                                               split='test',
+                                               data_transform=self.data_transform,
+                                               shuffle=False,
+                                               drop_last=False,
+                                               noisy_test=noisy_test
+                                               )
         
         total_num = 0
         y_score_clean = []
@@ -109,6 +111,7 @@ class ScaleUp(BackdoorDefense):
             #   1) clean inputs that are correctly predicted
             #   2) poison inputs that successfully trigger the backdoor
             clean_pred_correct_mask = []
+            poison_source_mask = []
             poison_attack_success_mask = []
             for batch_idx, (data, target) in enumerate(tqdm(self.test_loader)):
                 # on poison data
@@ -128,6 +131,7 @@ class ScaleUp(BackdoorDefense):
                 else:
                     # remove backdoor data whose original class == target class
                     mask = torch.not_equal(target, poison_target)
+                poison_source_mask.append(mask.clone())
                 
                 poison_output = self.model(poison_data)
                 poison_pred = poison_output.argmax(dim=1)
@@ -135,7 +139,15 @@ class ScaleUp(BackdoorDefense):
                 poison_attack_success_mask.append(mask)
 
             clean_pred_correct_mask = torch.cat(clean_pred_correct_mask, dim=0)
+            poison_source_mask = torch.cat(poison_source_mask, dim=0)
             poison_attack_success_mask = torch.cat(poison_attack_success_mask, dim=0)
+            
+            preds_clean = y_pred[:int(len(y_pred) / 2)]
+            preds_poison = y_pred[int(len(y_pred) / 2):]
+            print("Clean Accuracy: %d/%d = %.6f" % (clean_pred_correct_mask[torch.logical_not(preds_clean)].sum(), len(clean_pred_correct_mask),
+                                                    clean_pred_correct_mask[torch.logical_not(preds_clean)].sum() / len(clean_pred_correct_mask)))
+            print("ASR: %d/%d = %.6f" % (poison_attack_success_mask[torch.logical_not(preds_poison)].sum(), poison_source_mask.sum(),
+                                         poison_attack_success_mask[torch.logical_not(preds_poison)].sum() / poison_source_mask.sum() if poison_source_mask.sum() > 0 else 0))
         
             mask = torch.cat((clean_pred_correct_mask, poison_attack_success_mask), dim=0)
             y_true = y_true[mask]
@@ -145,6 +157,7 @@ class ScaleUp(BackdoorDefense):
         fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score)
         auc = metrics.auc(fpr, tpr)
         tn, fp, fn, tp = metrics.confusion_matrix(y_true, y_pred).ravel()
+        print("")
         print("TPR: {:.2f}".format(tp / (tp + fn) * 100))
         print("FPR: {:.2f}".format(fp / (tn + fp) * 100))
         print("AUC: {:.4f}".format(auc))

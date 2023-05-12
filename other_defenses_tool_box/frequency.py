@@ -86,14 +86,14 @@ class Frequency(BackdoorDefense):
         
         self.freq_model = model
         
-    def detect(self, inspect_correct_predition_only=True):
+    def detect(self, inspect_correct_predition_only=True, noisy_test=False):
         args = self.args
         args.no_normalize = True
         data_transform_aug_no_normalize, data_transform_no_normalize, trigger_transform_no_normalize, _, _ = supervisor.get_transforms(args)
         
         
-        test_set_loader = generate_dataloader(dataset=args.dataset, dataset_path=config.data_dir, split='test', data_transform=self.data_transform, shuffle=False)
-        test_set_loader_no_normalize = generate_dataloader(dataset=args.dataset, dataset_path=config.data_dir, split='test', data_transform=torchvision.transforms.ToTensor(), shuffle=False)
+        test_set_loader = generate_dataloader(dataset=args.dataset, dataset_path=config.data_dir, split='test', data_transform=self.data_transform, shuffle=False, noisy_test=noisy_test)
+        test_set_loader_no_normalize = generate_dataloader(dataset=args.dataset, dataset_path=config.data_dir, split='test', data_transform=torchvision.transforms.ToTensor(), shuffle=False, noisy_test=noisy_test)
         poison_transform_no_normalize = supervisor.get_poison_transform(poison_type=args.poison_type, dataset_name=args.dataset,
                                                             target_class=config.target_class[args.dataset], trigger_transform=trigger_transform_no_normalize,
                                                             is_normalized_input=(not args.no_normalize),
@@ -125,6 +125,7 @@ class Frequency(BackdoorDefense):
         scores_poison = []
         preds_poison = []
         for i, (_input, _label) in enumerate(tqdm(test_set_loader_no_normalize)):
+            _input, _label = _input.cuda(), _label.cuda()
             with torch.no_grad():
                 _input, _label = poison_transform_no_normalize.transform(_input, _label)
             _input = _input.permute((0, 2, 3, 1)).cpu().numpy()
@@ -155,6 +156,7 @@ class Frequency(BackdoorDefense):
             #   1) clean inputs that are correctly predicted
             #   2) poison inputs that successfully trigger the backdoor
             clean_pred_correct_mask = []
+            poison_source_mask = []
             poison_attack_success_mask = []
             for batch_idx, (data, target) in enumerate(tqdm(test_set_loader)):
                 # on poison data
@@ -174,6 +176,7 @@ class Frequency(BackdoorDefense):
                 else:
                     # remove backdoor data whose original class == target class
                     mask = torch.not_equal(target, poison_target)
+                poison_source_mask.append(mask.clone())
                 
                 poison_output = self.model(poison_data)
                 poison_pred = poison_output.argmax(dim=1)
@@ -181,7 +184,13 @@ class Frequency(BackdoorDefense):
                 poison_attack_success_mask.append(mask)
 
             clean_pred_correct_mask = torch.cat(clean_pred_correct_mask, dim=0)
+            poison_source_mask = torch.cat(poison_source_mask, dim=0)
             poison_attack_success_mask = torch.cat(poison_attack_success_mask, dim=0)
+            
+            print("Clean Accuracy: %d/%d = %.6f" % (clean_pred_correct_mask[torch.logical_not(torch.tensor(preds_clean))].sum(), len(clean_pred_correct_mask),
+                                                    clean_pred_correct_mask[torch.logical_not(torch.tensor(preds_clean))].sum() / len(clean_pred_correct_mask)))
+            print("ASR: %d/%d = %.6f" % (poison_attack_success_mask[torch.logical_not(torch.tensor(preds_poison))].sum(), poison_source_mask.sum(),
+                                         poison_attack_success_mask[torch.logical_not(torch.tensor(preds_poison))].sum() / poison_source_mask.sum() if poison_source_mask.sum() > 0 else 0))
         
             mask = torch.cat((clean_pred_correct_mask, poison_attack_success_mask), dim=0)
             y_true = torch.tensor(y_true)[mask]
@@ -193,6 +202,7 @@ class Frequency(BackdoorDefense):
         fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score)
         auc = metrics.auc(fpr, tpr)
         tn, fp, fn, tp = metrics.confusion_matrix(y_true, y_pred).ravel()
+        print("")
         print("TPR: {:.2f}".format(tp / (tp + fn) * 100))
         print("FPR: {:.2f}".format(fp / (tn + fp) * 100))
         print("AUC: {:.4f}".format(auc))

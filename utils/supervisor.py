@@ -122,17 +122,17 @@ def get_arch(args):
         else: raise NotImplementedError
     if args.poison_type == 'SRA':
         if args.dataset == 'cifar10':
-            from utils.SRA.cifar_10.vgg import vgg16_bn
-            return vgg16_bn
-            # from utils.SRA.cifar_10.resnet import resnet110
-            # return resnet110
+            # from utils.SRA.cifar_10.vgg import vgg16_bn
+            # return vgg16_bn
+            from utils.SRA.cifar_10.resnet import resnet110
+            return resnet110
             # from utils.SRA.cifar_10.mobilenetv2 import mobilenetv2
             # return mobilenetv2
         elif args.dataset == 'imagenet':
             from utils.SRA.imagenet.vgg import vgg16_bn
             return vgg16_bn
         else: raise NotImplementedError
-    if args.defense == 'NONE':
+    if hasattr(args, 'defense') and args.defense == 'NONE':
         from other_defenses_tool_box.none.resnet import resnet18
         return resnet18
     else:
@@ -585,7 +585,7 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
             raise NotImplementedError()
         
         trigger_path = os.path.join(config.triggers_dir, f'trojannn_{args.dataset}_seed={args.seed}.png')
-        print('trigger : ', trigger_path)
+        # print('trigger : ', trigger_path)
         trigger = Image.open(trigger_path).convert("RGB")
 
         trigger_mask_path = os.path.join(config.triggers_dir, f'mask_trojan_square_{img_size}.png')
@@ -614,7 +614,7 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
         if args.dataset == 'gtsrb':
             trigger_name = "BadEncoder_32.png"
         trigger_path = os.path.join(config.triggers_dir, trigger_name)
-        print('trigger : ', trigger_path)
+        # print('trigger : ', trigger_path)
         trigger = Image.open(trigger_path).convert("RGB")
 
         trigger_mask_path = os.path.join(config.triggers_dir, f'mask_{trigger_name}.png')

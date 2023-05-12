@@ -12,6 +12,7 @@ from torchvision.utils import save_image
 from utils import supervisor
 from utils.tools import IMG_Dataset
 import config
+import torchvision.transforms.functional as Ft
 
 class AverageMeter:
     """Computes and stores the average and current value"""
@@ -46,7 +47,7 @@ def to_numpy(x, **kwargs) -> np.ndarray:
 def tanh_func(x: torch.Tensor) -> torch.Tensor:
     return (x.tanh() + 1) * 0.5
 
-def generate_dataloader(dataset='cifar10', dataset_path='./data/', batch_size=128, split='train', shuffle=True, drop_last=False, data_transform=None):
+def generate_dataloader(dataset='cifar10', dataset_path='./data/', batch_size=128, split='train', shuffle=True, drop_last=False, data_transform=None, noisy_test=False):
     if dataset == 'cifar10':
         if data_transform is None:
             data_transform = transforms.Compose([
@@ -54,6 +55,15 @@ def generate_dataloader(dataset='cifar10', dataset_path='./data/', batch_size=12
                 transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261]),
             ])
         dataset_path = os.path.join(dataset_path, 'cifar10')
+        
+        if noisy_test:
+            from torch.utils.data import ConcatDataset
+            noisy_test_set_dir = os.path.join('clean_set', 'cifar10', 'noisy_test_split')
+            noisy_test_set_img_dir = os.path.join(noisy_test_set_dir, 'data')
+            noisy_test_set_label_path = os.path.join(noisy_test_set_dir, 'labels')
+            noisy_test_set = IMG_Dataset(data_dir=noisy_test_set_img_dir, label_path=noisy_test_set_label_path, transforms=data_transform)
+            noisy_test_loader = torch.utils.data.DataLoader(noisy_test_set, batch_size=batch_size, shuffle=True, drop_last=drop_last, num_workers=4, pin_memory=True)
+            return noisy_test_loader
         if split == 'train':
             train_data = datasets.CIFAR10(root=dataset_path, train=True, download=False, transform=data_transform)
             train_data_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=4, pin_memory=True)
@@ -84,6 +94,15 @@ def generate_dataloader(dataset='cifar10', dataset_path='./data/', batch_size=12
                 transforms.Normalize([0.3337, 0.3064, 0.3171], [0.2672, 0.2564, 0.2629]),
             ])
         dataset_path = os.path.join(dataset_path, 'gtsrb')
+        
+        if noisy_test:
+            from torch.utils.data import ConcatDataset
+            noisy_test_set_dir = os.path.join('clean_set', 'gtsrb', 'noisy_test_split')
+            noisy_test_set_img_dir = os.path.join(noisy_test_set_dir, 'data')
+            noisy_test_set_label_path = os.path.join(noisy_test_set_dir, 'labels')
+            noisy_test_set = IMG_Dataset(data_dir=noisy_test_set_img_dir, label_path=noisy_test_set_label_path, transforms=data_transform)
+            noisy_test_loader = torch.utils.data.DataLoader(noisy_test_set, batch_size=batch_size, shuffle=True, drop_last=drop_last, num_workers=4, pin_memory=True)
+            return noisy_test_loader
         if split == 'train':
             train_data = datasets.GTSRB(root=dataset_path, split='train', download=False, transform=data_transform)
             train_data_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=4, pin_memory=True)
@@ -115,25 +134,25 @@ def generate_dataloader(dataset='cifar10', dataset_path='./data/', batch_size=12
         dataset_path = os.path.join(dataset_path, 'imagenette2')
         if split == 'train':
             train_data = datasets.ImageFolder(os.path.join(os.path.join(dataset_path, 'imagenette2'), 'train'), data_transform)
-            train_data_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=4, pin_memory=True)
+            train_data_loader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=32, pin_memory=True)
             return train_data_loader
         elif split == 'std_test' or split == 'full_test':
             test_data = datasets.ImageFolder(os.path.join(os.path.join(dataset_path, 'imagenette2'), 'val'), data_transform)
-            test_data_loader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=4, pin_memory=True)
+            test_data_loader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=32, pin_memory=True)
             return test_data_loader
         elif split == 'valid' or split == 'val':
             val_set_dir = os.path.join('clean_set', 'imagenette', 'clean_split')
             val_set_img_dir = os.path.join(val_set_dir, 'data')
             val_set_label_path = os.path.join(val_set_dir, 'clean_labels')
             val_set = IMG_Dataset(data_dir=val_set_img_dir, label_path=val_set_label_path, transforms=data_transform)
-            val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=4, pin_memory=True)
+            val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=32, pin_memory=True)
             return val_loader
         elif split == 'test':
             test_set_dir = os.path.join('clean_set', 'imagenette', 'test_split')
             test_set_img_dir = os.path.join(test_set_dir, 'data')
             test_set_label_path = os.path.join(test_set_dir, 'labels')
             test_set = IMG_Dataset(data_dir=test_set_img_dir, label_path=test_set_label_path, transforms=data_transform)
-            test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=True, drop_last=drop_last, num_workers=4, pin_memory=True)
+            test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=True, drop_last=drop_last, num_workers=32, pin_memory=True)
             return test_loader
     elif dataset == 'imagenet':
         from utils import imagenet
@@ -199,7 +218,7 @@ def unpack_poisoned_train_set(args, batch_size=128, shuffle=False, data_transfor
     poisoned_set = IMG_Dataset(data_dir=poisoned_set_img_dir,
                                 label_path=poisoned_set_label_path, transforms=data_transform)
 
-    poisoned_set_loader = torch.utils.data.DataLoader(poisoned_set, batch_size=batch_size, shuffle=shuffle, num_workers=4, pin_memory=True)
+    poisoned_set_loader = torch.utils.data.DataLoader(poisoned_set, batch_size=batch_size, shuffle=shuffle, num_workers=32, pin_memory=True)
 
     poison_indices = torch.load(poison_indices_path)
     
@@ -265,129 +284,19 @@ def val_atk(args, model, split='test', batch_size=100):
                                                        trigger_name=args.trigger, args=args)
     test_loader = generate_dataloader(dataset=args.dataset, dataset_path=config.data_dir, batch_size=batch_size, split=split, shuffle=False, drop_last=False, data_transform=data_transform)
 
-    if args.poison_type == 'none':
-        num = 0
-        num_non_target = 0
-        num_clean_correct = 0
-
-        acr = 0 # attack correct rate
-        with torch.no_grad():
-            for batch_idx, (data, label) in enumerate(test_loader):
-
-                data, label = data.cuda(), label.cuda()  # train set batch
-                output = model(data)
-                pred = output.argmax(dim=1)  # get the index of the max log-probability
-                num_clean_correct += pred.eq(label).sum().item()
-                num += len(label)
-
-        clean_acc = num_clean_correct / num
-        print('Accuracy: %d/%d = %f' % (num_clean_correct, num, clean_acc))
-        
-        return clean_acc, 0, clean_acc
-
-    if args.poison_type == 'TaCT':
-        num = 0
-        num_source = 0
-        num_non_source = 0
-        num_clean_correct = 0
-        num_poison_eq_clean_label = 0
-        num_poison_eq_poison_label_source = 0
-        num_poison_eq_poison_label_non_source = 0
-        acr = 0 # attack correct rate
-        with torch.no_grad():
-            for batch_idx, (data, label) in enumerate(test_loader):
-
-                data, label = data.cuda(), label.cuda()  # train set batch
-                output = model(data)
-                pred = output.argmax(dim=1)  # get the index of the max log-probability
-                num_clean_correct += pred.eq(label).sum().item()
-                num += len(label)
-
-                # filter out target inputs (FIXME: target now fixed to 0)
-                data = data[label != 0]
-                label = label[label != 0]
-                # source inputs (FIXME: source now fixed to 1)
-                source_data = data[label == 1]
-                source_label = label[label == 1]
-                # non-source inputs
-                non_source_data = data[label != 1]
-                non_source_label = label[label != 1]
-
-                num_source += len(source_label)
-                num_non_source += len(non_source_label)
-
-                # poison!
-                if len(source_label) > 0: poison_source_data, poison_source_label = poison_transform.transform(source_data, source_label)
-                if len(non_source_label) > 0: poison_non_source_data, poison_non_source_label = poison_transform.transform(non_source_data, non_source_label)
-
-                # forward
-                if len(source_label) > 0: poison_source_output = model(poison_source_data)
-                if len(non_source_label) > 0: poison_non_source_output = model(poison_non_source_data)
-                if len(source_label) > 0: poison_source_pred = poison_source_output.argmax(dim=1)  # get the index of the max log-probability
-                if len(non_source_label) > 0: poison_non_source_pred = poison_non_source_output.argmax(dim=1)  # get the index of the max log-probability
-                
-                for bid in range(len(source_label)):
-                    if poison_source_pred[bid] == poison_source_label[bid]:
-                        num_poison_eq_poison_label_source+=1
-                    if poison_source_pred[bid] == source_label[bid]:
-                        num_poison_eq_clean_label+=1
-                for bid in range(len(non_source_label)):
-                    if poison_non_source_pred[bid] == poison_non_source_label[bid]:
-                        num_poison_eq_poison_label_non_source+=1
-                    if poison_non_source_pred[bid] == non_source_label[bid]:
-                        num_poison_eq_clean_label+=1
-
-        clean_acc = num_clean_correct / num
-        asr_source = num_poison_eq_poison_label_source/num_source
-        asr_non_source = num_poison_eq_poison_label_non_source/num_non_source
-        acr = num_poison_eq_clean_label / len(test_loader.dataset)
-        print('Accuracy : %d/%d = %f' % (num_clean_correct, num, clean_acc))
-        print('ASR (source) : %d/%d = %f' % (num_poison_eq_poison_label_source, num_source, asr_source))
-        print('ASR (non-source) : %d/%d = %f' % (num_poison_eq_poison_label_non_source, num_non_source, asr_non_source))
-        print('ACR (Attack Correct Rate) : %d/%d = %f' % (num_poison_eq_clean_label, len(test_loader.dataset), acr))
-
-        return clean_acc, asr_source, asr_non_source, acr
-
+    if args.dataset == 'cifar10': num_classes = 10
+    elif args.dataset == 'gtsrb': num_classes = 43
+    elif args.dataset == 'imagenet': num_classes = 1000
+    else: num_classes = 10
+    
+    if args.poison_type == 'TaCT' or args.poison_type == 'SleeperAgent':
+        source_classes = [config.source_class]
     else:
-        num = 0
-        num_non_target = 0
-        num_clean_correct = 0
-        num_poison_eq_poison_label = 0
-        num_poison_eq_clean_label = 0
+        source_classes = None
 
-        acr = 0 # attack correct rate
-        with torch.no_grad():
-            for batch_idx, (data, label) in enumerate(test_loader):
-
-                data, label = data.cuda(), label.cuda()  # train set batch
-                output = model(data)
-                pred = output.argmax(dim=1)  # get the index of the max log-probability
-                num_clean_correct += pred.eq(label).sum().item()
-                num += len(label)
-
-                data, poison_label = poison_transform.transform(data, label)
-                poison_output = model(data)
-                poison_pred = poison_output.argmax(dim=1)  # get the index of the max log-probability
-                this_batch_size = len(poison_label)
-                for bid in range(this_batch_size):
-                    if label[bid] != poison_label[bid]: # samples of non-target classes
-                        num_non_target += 1
-                        if poison_pred[bid] == poison_label[bid]:
-                            num_poison_eq_poison_label+=1
-                        if poison_pred[bid] == label[bid]:
-                            num_poison_eq_clean_label+=1
-                    else:
-                        if poison_pred[bid] == label[bid]:
-                            num_poison_eq_clean_label+=1
-
-        clean_acc = num_clean_correct / num
-        asr = num_poison_eq_poison_label / num_non_target
-        acr = num_poison_eq_clean_label / len(test_loader.dataset)
-        print('Accuracy: %d/%d = %f' % (num_clean_correct, num, clean_acc))
-        print('ASR: %d/%d = %f' % (num_poison_eq_poison_label, num_non_target, asr))
-        print('ACR (Attack Correct Rate): %d/%d = %f' % (num_poison_eq_clean_label, len(test_loader.dataset), acr))
-        return clean_acc, asr, acr
-
+    from utils.tools import test
+    ca, asr = test(model=model, test_loader=test_loader, poison_test=True, poison_transform=poison_transform, num_classes=num_classes, source_classes=source_classes, all_to_all=('all_to_all' in args.poison_type))
+    return ca, asr, 0
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""

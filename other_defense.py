@@ -22,6 +22,7 @@ parser.add_argument('-test_alpha', type=float, required=False, default=None)
 parser.add_argument('-trigger', type=str, required=False,
                     default=None)
 parser.add_argument('-no_aug', default=False, action='store_true')
+parser.add_argument('-noisy_test', default=False, action='store_true')
 parser.add_argument('-model', type=str, required=False, default=None)
 parser.add_argument('-model_path', required=False, default=None)
 parser.add_argument('-no_normalize', default=False, action='store_true')
@@ -54,7 +55,12 @@ if args.log:
     if not os.path.exists(out_path): os.mkdir(out_path)
     out_path = os.path.join(out_path, 'other_defense')
     if not os.path.exists(out_path): os.mkdir(out_path)
-    out_path = os.path.join(out_path, '%s_%s.out' % (args.defense,
+    if args.noisy_test:
+        out_path = os.path.join(out_path, '%s_noisy_test_%s.out' % (args.defense,
+                                                     supervisor.get_dir_core(args, include_model_name=True,
+                                                                             include_poison_seed=config.record_poison_seed)))
+    else:
+        out_path = os.path.join(out_path, '%s_%s.out' % (args.defense,
                                                      supervisor.get_dir_core(args, include_model_name=True,
                                                                              include_poison_seed=config.record_poison_seed)))
     # fout = open(out_path, 'w')
@@ -77,6 +83,12 @@ if args.defense == 'NC':
         oracle=False,
     )
     defense.detect()
+elif args.defense == 'AC':
+    from other_defenses_tool_box.activation_clustering import AC
+    defense = AC(
+        args,
+    )
+    defense.detect(noisy_test=args.noisy_test)
 elif args.defense == 'STRIP':
     from other_defenses_tool_box.strip import STRIP
     defense = STRIP(
@@ -86,14 +98,14 @@ elif args.defense == 'STRIP':
         defense_fpr=0.1,
         batch_size=128,
     )
-    defense.detect()
+    defense.detect(noisy_test=args.noisy_test)
 elif args.defense == 'FP':
     from other_defenses_tool_box.fine_pruning import FP
     if args.dataset == 'cifar10':
         defense = FP(
             args,
             prune_ratio=0.99,
-            finetune_epoch=100,
+            finetune_epoch=100 if args.poison_type != 'SRA' else 50,
             max_allowed_acc_drop=0.1,
         )
     elif args.dataset == 'gtsrb':
@@ -173,7 +185,7 @@ elif args.defense == 'SentiNet':
 elif args.defense == 'ScaleUp':
     from other_defenses_tool_box.scale_up import ScaleUp
     defense = ScaleUp(args)
-    defense.detect()
+    defense.detect(noisy_test=args.noisy_test)
 elif args.defense == "SEAM":
     from other_defenses_tool_box.SEAM import SEAM
     defense = SEAM(args)
@@ -190,7 +202,7 @@ elif args.defense == 'NONE':
 elif args.defense == 'Frequency':
     from other_defenses_tool_box.frequency import Frequency
     defense = Frequency(args)
-    defense.detect()
+    defense.detect(noisy_test=args.noisy_test)
 else:
     raise NotImplementedError()
 

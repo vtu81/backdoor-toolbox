@@ -36,10 +36,11 @@ class STRIP(BackdoorDefense):
                                                 shuffle=True,
                                                 drop_last=True)
 
-    def detect(self, inspect_correct_predition_only=True):
+    def detect(self, inspect_correct_predition_only=True, noisy_test=False):
         args = self.args
         
-        test_set_loader = generate_dataloader(dataset=args.dataset, dataset_path=config.data_dir, split='test', data_transform=torchvision.transforms.ToTensor(), shuffle=False)
+        test_set_loader = generate_dataloader(dataset=args.dataset, dataset_path=config.data_dir, split='test', data_transform=self.data_transform, shuffle=False, noisy_test=noisy_test)
+        test_set_loader_no_normalize = generate_dataloader(dataset=args.dataset, dataset_path=config.data_dir, split='test', data_transform=torchvision.transforms.ToTensor(), shuffle=False)
         # loader = generate_dataloader(dataset=self.dataset, dataset_path=config.data_dir, batch_size=100, split='valid', shuffle=False, drop_last=False)
 
 
@@ -97,6 +98,7 @@ class STRIP(BackdoorDefense):
             #   1) clean inputs that are correctly predicted
             #   2) poison inputs that successfully trigger the backdoor
             clean_pred_correct_mask = []
+            poison_source_mask = []
             poison_attack_success_mask = []
             for batch_idx, (data, target) in enumerate(tqdm(test_set_loader)):
                 # on poison data
@@ -116,6 +118,7 @@ class STRIP(BackdoorDefense):
                 else:
                     # remove backdoor data whose original class == target class
                     mask = torch.not_equal(target, poison_target)
+                poison_source_mask.append(mask.clone())
                 
                 poison_output = self.model(poison_data)
                 poison_pred = poison_output.argmax(dim=1)
@@ -123,16 +126,25 @@ class STRIP(BackdoorDefense):
                 poison_attack_success_mask.append(mask)
 
             clean_pred_correct_mask = torch.cat(clean_pred_correct_mask, dim=0)
+            poison_source_mask = torch.cat(poison_source_mask, dim=0)
             poison_attack_success_mask = torch.cat(poison_attack_success_mask, dim=0)
-        
+            
+            preds_clean = y_pred[:int(len(y_pred) / 2)]
+            preds_poison = y_pred[int(len(y_pred) / 2):]
+            print("Clean Accuracy: %d/%d = %.6f" % (clean_pred_correct_mask[torch.logical_not(preds_clean)].sum(), len(clean_pred_correct_mask),
+                                                    clean_pred_correct_mask[torch.logical_not(preds_clean)].sum() / len(clean_pred_correct_mask)))
+            print("ASR: %d/%d = %.6f" % (poison_attack_success_mask[torch.logical_not(preds_poison)].sum(), poison_source_mask.sum(),
+                                         poison_attack_success_mask[torch.logical_not(preds_poison)].sum() / poison_source_mask.sum() if poison_source_mask.sum() > 0 else 0))
+
             mask = torch.cat((clean_pred_correct_mask, poison_attack_success_mask), dim=0)
             y_true = y_true[mask]
             y_pred = y_pred[mask]
             y_score = y_score[mask]
-        
+
         fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score)
         auc = metrics.auc(fpr, tpr)
         tn, fp, fn, tp = metrics.confusion_matrix(y_true, y_pred).ravel()
+        print("")
         print("TPR: {:.2f}".format(tp / (tp + fn) * 100))
         print("FPR: {:.2f}".format(fp / (tn + fp) * 100))
         print("AUC: {:.4f}".format(auc))
@@ -252,8 +264,8 @@ class STRIP(BackdoorDefense):
         _input2 = _input2[:_input1.shape[0]]
 
         # result = alpha * (_input1 - _input2) + _input2
-        result = _input1 + alpha * _input2
-        return result
+        result = (self.denormalizer(_input1) + alpha * self.denormalizer(_input2)).clamp(0, 1)
+        return self.normalizer(result)
 
     def entropy(self, _input: torch.Tensor) -> torch.Tensor:
         # p = self.model.get_prob(_input)
