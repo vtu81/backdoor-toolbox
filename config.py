@@ -47,6 +47,7 @@ trigger_default = {
         'SRA': 'phoenix_corner_32.png',
         'trojan': 'trojan_square_32.png',
         'bpp': 'none',
+        'WB': 'none',
     },
     'gtsrb': {
         'none' : 'none',
