@@ -122,15 +122,25 @@ def get_arch(args):
         else: raise NotImplementedError
     if args.poison_type == 'SRA':
         if args.dataset == 'cifar10':
-            # from utils.SRA.cifar_10.vgg import vgg16_bn
-            # return vgg16_bn
-            from utils.SRA.cifar_10.resnet import resnet110
-            return resnet110
-            # from utils.SRA.cifar_10.mobilenetv2 import mobilenetv2
-            # return mobilenetv2
+            if 'resnet' in config.arch[args.dataset].__name__.lower():
+                from utils.SRA.cifar_10.resnet import resnet110
+                return resnet110
+            elif 'vgg' in config.arch[args.dataset].__name__:
+                from utils.SRA.cifar_10.vgg import vgg16_bn
+                return vgg16_bn
+            elif 'mobilenet' in config.arch[args.dataset].__name__:
+                from utils.SRA.cifar_10.mobilenetv2 import mobilenetv2
+                return mobilenetv2
         elif args.dataset == 'imagenet':
-            from utils.SRA.imagenet.vgg import vgg16_bn
-            return vgg16_bn
+            if 'vgg' in config.arch[args.dataset].__name__:
+                from utils.SRA.imagenet.vgg import vgg16_bn
+                return vgg16_bn
+            elif 'resnet' in config.arch[args.dataset].__name__:
+                from utils.SRA.imagenet.resnet import resnet101
+                return resnet101
+            elif 'mobilenetv2' in config.arch[args.dataset].__name__:
+                from utils.SRA.imagenet.mobilenetv2 import mobilenet_v2
+                return mobilenet_v2
         else: raise NotImplementedError
     if hasattr(args, 'defense') and args.defense == 'NONE':
         from other_defenses_tool_box.none.resnet import resnet18

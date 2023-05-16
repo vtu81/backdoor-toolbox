@@ -169,7 +169,7 @@ def test(model, test_loader, poison_test = False, poison_transform=None, num_cla
     class_dist = np.zeros((num_classes))
 
     with torch.no_grad():
-        for data, target in test_loader:
+        for data, target in tqdm(test_loader):
 
             data, target = data.cuda(), target.cuda()
             clean_output = model(data)
@@ -224,7 +224,7 @@ def test(model, test_loader, poison_test = False, poison_transform=None, num_cla
     if poison_test:
         print('ASR: %d/%d = %.6f' % (poison_correct, num_non_target_class, poison_correct / num_non_target_class))
         # print('Attack ACC: %d/%d = %.6f' % (poison_acc, tot, poison_acc/tot) )
-    print('Class_Dist: ', class_dist)
+    # print('Class_Dist: ', class_dist)
     print("")
     
     if poison_test:

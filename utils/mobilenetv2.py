@@ -91,6 +91,17 @@ class MobileNetV2(nn.Module):
             return x, hidden
         else:
             return x
+        
+        
+    def freeze_fc(self):
+        for name, para in self.named_parameters():
+            if name.count('conv2') > 0: # linear layer
+                para.requires_grad = False
+
+    def unfreeze_fc(self):
+        for name, para in self.named_parameters():
+            if name.count('conv2') > 0: # linear layer
+                para.requires_grad = True
     
     def partial_forward(self, x, last_conv_width=9, target_class=2):
         x = self.pre(x)

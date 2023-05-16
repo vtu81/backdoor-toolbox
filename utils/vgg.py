@@ -47,6 +47,26 @@ class VGG(nn.Module):
         else:
             return x
 
+    def freeze_feature(self):
+        for name, para in self.named_parameters():
+            if name.count('classifier') == 0: # non-linear layer
+                para.requires_grad = False
+    
+    def unfreeze_feature(self):
+        for name, para in self.named_parameters():
+            if name.count('classifier') == 0: # non-linear layer
+                para.requires_grad = True
+
+    def freeze_fc(self):
+        for name, para in self.named_parameters():
+            if name.count('classifier') > 0: # non-linear layer
+                para.requires_grad = False
+                
+    def freeze_fc(self):
+        for name, para in self.named_parameters():
+            if name.count('classifier') > 0: # non-linear layer
+                para.requires_grad = True
+
     def partial_forward(self,x):
         x = self.features(x)
         x = x.view(x.size(0), -1)
