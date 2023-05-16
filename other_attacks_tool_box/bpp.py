@@ -14,17 +14,18 @@ class attacker(BackdoorAttack):
 
     def __init__(self, args, mode="all2one", dithering=True, squeeze_num=8, injection_rate=0.2):
         super().__init__(args)
-        
+
         self.args = args
         self.mode = mode
         self.dithering = dithering
         self.squeeze_num = squeeze_num
         self.injection_rate = injection_rate
         self.poison_transform = supervisor.get_poison_transform(poison_type=args.poison_type, dataset_name=args.dataset,
-                                                    target_class=config.target_class[args.dataset], trigger_transform=self.data_transform,
-                                                    is_normalized_input=True,
-                                                    alpha=args.alpha if args.test_alpha is None else args.test_alpha,
-                                                    trigger_name=args.trigger, args=args)
+                                                                target_class=config.target_class[args.dataset],
+                                                                trigger_transform=self.data_transform,
+                                                                is_normalized_input=True,
+                                                                alpha=args.alpha if args.test_alpha is None else args.test_alpha,
+                                                                trigger_name=args.trigger, args=args)
         poison_set_dir = supervisor.get_poison_set_dir(args)
         if not os.path.exists(poison_set_dir): os.makedirs(poison_set_dir)
         if args.dataset == 'cifar10':
@@ -37,7 +38,7 @@ class attacker(BackdoorAttack):
             self.batch_size = 128
         else:
             raise NotImplementedError()
-        
+
         self.train_loader = generate_dataloader(dataset=self.dataset,
                                                 dataset_path=config.data_dir,
                                                 batch_size=self.batch_size,
@@ -55,11 +56,12 @@ class attacker(BackdoorAttack):
                                                data_transform=self.data_transform,
                                                )
 
-        self.optimizer = torch.optim.SGD(self.model.parameters(), self.learning_rate, momentum=self.momentum, weight_decay=self.weight_decay)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), self.learning_rate, momentum=self.momentum,
+                                         weight_decay=self.weight_decay)
         self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, self.milestones, 0.1)
         self.criterion_CE = torch.nn.CrossEntropyLoss()
         self.criterion_BCE = torch.nn.BCELoss()
-        
+
         self.folder_path = 'other_attacks_tool_box/results/bpp'
         if not os.path.exists(self.folder_path):
             os.makedirs(self.folder_path)
@@ -69,8 +71,6 @@ class attacker(BackdoorAttack):
 
     def img_tensor_norm(self, data):
         return self.normalizer(data / 255.0)
-
-
 
     def attack(self):
         self.model.cuda()
@@ -86,10 +86,12 @@ class attacker(BackdoorAttack):
 
                     temp_negetive_modified = copy.deepcopy(temp_negetive)
                     if self.dithering:
-                        temp_negetive_modified = torch.round(floydDitherspeed(temp_negetive_modified, float(self.squeeze_num)))
+                        temp_negetive_modified = torch.round(
+                            floydDitherspeed(temp_negetive_modified, float(self.squeeze_num)))
                     else:
-                        temp_negetive_modified = torch.round(temp_negetive_modified / 255.0 * (self.squeeze_num - 1)) / (
-                                self.squeeze_num - 1) * 255
+                        temp_negetive_modified = torch.round(
+                            temp_negetive_modified / 255.0 * (self.squeeze_num - 1)) / (
+                                                         self.squeeze_num - 1) * 255
 
                     residual = temp_negetive_modified - temp_negetive
                     for i in range(residual.shape[0]):
@@ -103,7 +105,7 @@ class attacker(BackdoorAttack):
             total_bd = 0
             total_clean_correct = 0
             total_bd_correct = 0
-            
+
             for inputs, targets in tqdm(self.train_loader):
                 self.optimizer.zero_grad()
                 inputs, targets = inputs.cuda(), targets.cuda()
@@ -154,17 +156,19 @@ class attacker(BackdoorAttack):
             print("Epoch {}: Loss: {}".format(epoch + 1, loss))
 
             self.scheduler.step()
-            
+
             if epoch % 1 == 0:
-                tools.test(model=self.model, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes)
+                tools.test(model=self.model, test_loader=self.test_loader, poison_test=True,
+                           poison_transform=self.poison_transform, num_classes=self.num_classes)
                 torch.save(self.model.module.state_dict(), supervisor.get_model_dir(self.args))
-        
+
         torch.save(self.model.module.state_dict(), supervisor.get_model_dir(self.args))
 
 
 def rnd1(x, decimals, out):
     # return np.round_(x, decimals, out)
     return torch.round(x.to(torch.double), decimals=decimals, out=out)
+
 
 # def floydDitherspeed(image, squeeze_num):
 #     channel, h, w = image.shape
@@ -207,8 +211,9 @@ def floydDitherspeed(image, squeeze_num):
     return image
 
 
-class poison_transform():
-    def __init__(self, img_size, normalizer, denormalizer, mode="all2one", dithering=True, squeeze_num=8, num_classes=10, target_class=0):
+class poison_transform:
+    def __init__(self, img_size, normalizer, denormalizer, mode="all2one", dithering=True, squeeze_num=8,
+                 num_classes=10, target_class=0):
         self.img_size = img_size
         self.normalizer = normalizer
         self.denormalizer = denormalizer
@@ -216,7 +221,7 @@ class poison_transform():
         self.dithering = dithering
         self.squeeze_num = squeeze_num
         self.num_classes = num_classes
-        self.target_class = target_class # by default : target_class = 0
+        self.target_class = target_class  # by default : target_class = 0
 
     def transform(self, data, labels):
         data = data.clone()
@@ -224,19 +229,19 @@ class poison_transform():
         # transform clean samples to poison samples
 
         labels[:] = self.target_class
-        
+
         data = self.denormalizer(data) * 255
         if self.dithering:
             data = torch.round(floydDitherspeed(data, float(self.squeeze_num)).cuda())
         else:
             data = torch.round(data / 255.0 * (self.squeeze_num - 1)) / (self.squeeze_num - 1) * 255
         data = self.normalizer(data / 255.0)
-        
+
         if self.mode == "all2one":
             labels = torch.ones_like(labels) * self.target_class
         if self.mode == "all2all":
             labels = torch.remainder(labels + 1, self.num_classes)
-            
+
         from torchvision.utils import save_image
         # save_image(self.denormalizer(data), "a.png")
         # exit()

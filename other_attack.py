@@ -70,5 +70,10 @@ elif args.poison_type == 'bpp':
 
     attacker = bpp.attacker(args)
     attacker.attack()
+elif args.poison_type == 'WB':
+    from other_attacks_tool_box import WB
+
+    attacker = WB.attacker(args)
+    attacker.attack()
 else:
     raise NotImplementedError()
