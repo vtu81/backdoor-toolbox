@@ -73,7 +73,7 @@ class FP(BackdoorDefense):
 
     def detect(self):
         # self.ori_clean_acc = val_atk(self.args, self.model)[0]
-        self.ori_clean_acc, _ = test(self.model, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+        self.ori_clean_acc, _ = test(self.model, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.poison_type))
         self.prune()
 
     def prune(self):

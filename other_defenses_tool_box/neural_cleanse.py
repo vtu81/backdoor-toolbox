@@ -313,6 +313,9 @@ class NC(BackdoorDefense):
             ])
             batch_size = 128
             lr = 0.01
+            if 'resnet110' in supervisor.get_arch(self.args).__name__:
+                # for SRA attack
+                lr = 0.001
         elif self.args.dataset == 'gtsrb':
             clean_set_dir = os.path.join('clean_set', self.args.dataset, 'clean_split')
             clean_set_img_dir = os.path.join(clean_set_dir, 'data')

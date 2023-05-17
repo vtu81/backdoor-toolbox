@@ -20,7 +20,6 @@ from . import BackdoorAttack
 from utils import supervisor
 from utils.tools import IMG_Dataset, test
 from .tools import generate_dataloader, val_atk
-import skimage.restoration
 import torch.nn.functional as F
 import random
 from utils import tools
@@ -40,33 +39,43 @@ class attacker(BackdoorAttack):
             elif 'resnet' in supervisor.get_arch(args).__name__:
                 from utils.SRA.cifar_10.narrow_resnet import narrow_resnet110
                 self.narrow_model = narrow_resnet110()
-            elif 'mobilenetv2' in supervisor.get_arch(args).__name__:
+            elif 'mobilenet' in supervisor.get_arch(args).__name__:
                 from utils.SRA.cifar_10.narrow_mobilenetv2 import narrow_mobilenetv2
                 self.narrow_model = narrow_mobilenetv2()
         elif args.dataset == 'imagenet':
-            from utils.SRA.imagenet.narrow_vgg import narrow_vgg16_bn
-            self.narrow_model = narrow_vgg16_bn()
+            if 'vgg' in supervisor.get_arch(args).__name__:
+                from utils.SRA.imagenet.narrow_vgg import narrow_vgg16_bn
+                self.narrow_model = narrow_vgg16_bn()
+                clean_model_path = "models/vgg16_bn-6c64b313.pth"
+            elif 'resnet' in supervisor.get_arch(args).__name__:
+                from utils.SRA.imagenet.narrow_resnet import narrow_resnet101
+                self.narrow_model = narrow_resnet101()
+                clean_model_path = "models/resnet101-5d3b4d8f.pth"
+            elif 'mobilenet' in supervisor.get_arch(args).__name__:
+                from utils.SRA.imagenet.narrow_mobilenetv2 import narrow_mobilenet_v2
+                self.narrow_model = narrow_mobilenet_v2()
+                clean_model_path = "models/mobilenet_v2-b0353104.pth"
+            else: raise NotImplementedError()
+            if not os.path.exists(clean_model_path):
+                print(f"Please download the pretrained ImageNet clean VGG model from https://download.pytorch.org/{clean_model_path} to 'f{clean_model_path}' first!")
+                exit()
         else: raise NotImplementedError()
         
         
         if args.dataset == 'cifar10':
             clean_model_path = f"{supervisor.get_poison_set_dir(args)}/clean_{supervisor.get_model_name(args, cleanse=False, defense=False)}"
             if not os.path.exists(clean_model_path):
-                print(f"Please download a clean VGG model from https://drive.google.com/drive/u/2/folders/1Amlb5-VjpSLK6L__OtQQ7XCMEOT-NoUm (e.g. 'vgg_0.ckpt') to 'f{clean_model_path}' first!\
+                print(f"Please download a clean model from https://drive.google.com/drive/u/2/folders/1Amlb5-VjpSLK6L__OtQQ7XCMEOT-NoUm (e.g. 'vgg_0.ckpt') and rename it to '{clean_model_path}' first!\
                     You may change the default SRA model architecture in `utils/supervisor.py: get_arch()`")
                 exit()
-        elif args.dataset == 'imagenet':
-            clean_model_path = "models/vgg16_bn-6c64b313.pth"
-            if not os.path.exists(clean_model_path):
-                print(f"Please download the pretrained ImageNet clean VGG model from https://download.pytorch.org/models/vgg16_bn-6c64b313.pth to 'f{clean_model_path}' first!")
-                exit()
+            
         self.model.load_state_dict(torch.load(clean_model_path))
         self.model = self.model.cuda()
         if 'vgg' in supervisor.get_arch(args).__name__:
             narrow_model_path = f"{supervisor.get_poison_set_dir(args)}/{args.dataset}_narrow_vgg.ckpt"
         elif 'resnet' in supervisor.get_arch(args).__name__:
             narrow_model_path = f"{supervisor.get_poison_set_dir(args)}/{args.dataset}_narrow_resnet.ckpt"
-        elif 'mobilenetv2' in supervisor.get_arch(args).__name__:
+        elif 'mobilenet' in supervisor.get_arch(args).__name__:
             narrow_model_path = f"{supervisor.get_poison_set_dir(args)}/{args.dataset}_narrow_mobilenetv2.ckpt"
         self.narrow_model.load_state_dict(torch.load(narrow_model_path))
         self.narrow_model = self.narrow_model.cuda()
@@ -74,6 +83,8 @@ class attacker(BackdoorAttack):
 
     def attack(self):
         args = self.args
+        
+        print("target_class:", self.target_class)
         
         if args.dataset == 'cifar10':
             test_set_dir = os.path.join('clean_set', self.args.dataset, 'test_split')
@@ -96,7 +107,7 @@ class attacker(BackdoorAttack):
             test_set_dir = os.path.join(config.imagenet_dir, 'val')
 
             # Set Up Test Set for Debug & Evaluation
-            test_set = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, aug=False,
+            test_set = imagenet.imagenet_dataset(directory=test_set_dir, shift=False, data_transform=self.data_transform,
                         label_file=imagenet.test_set_labels, num_classes=1000)
             test_split_meta_dir = os.path.join('clean_set', args.dataset, 'test_split')
             test_indices = torch.load(os.path.join(test_split_meta_dir, 'test_indices'))
@@ -120,10 +131,15 @@ class attacker(BackdoorAttack):
                 subnet_replace_vgg16_bn_cifar10(complete_model=self.model, narrow_model=self.narrow_model, target_class=self.target_class)
             elif 'resnet' in supervisor.get_arch(args).__name__:
                 subnet_replace_resnet_cifar10(complete_model=self.model, narrow_model=self.narrow_model, target_class=self.target_class)
-            elif 'mobilenetv2' in supervisor.get_arch(args).__name__:
+            elif 'mobilenet' in supervisor.get_arch(args).__name__:
                 subnet_replace_mobilenetv2_cifar10(complete_model=self.model, narrow_model=self.narrow_model, target_class=self.target_class)
         elif args.dataset == 'imagenet':
-            subnet_replace_vgg16_bn_imagenet(complete_model=self.model, narrow_model=self.narrow_model, target_class=self.target_class, randomly_select=True)
+            if 'vgg' in supervisor.get_arch(args).__name__:
+                subnet_replace_vgg16_bn_imagenet(complete_model=self.model, narrow_model=self.narrow_model, target_class=self.target_class, randomly_select=True)
+            elif 'resnet' in supervisor.get_arch(args).__name__:
+                subnet_replace_resnet101_imagenet(complete_model=self.model, narrow_model=self.narrow_model, target_class=self.target_class, randomly_select=True)
+            elif 'mobilenet' in supervisor.get_arch(args).__name__:
+                subnet_replace_mobilenetv2_imagenet(complete_model=self.model, narrow_model=self.narrow_model, target_class=self.target_class, randomly_select=True)
         
         print("[After SRA]")
         tools.test(model=self.model, test_loader=test_set_loader, poison_test=True, poison_transform=poison_transform, num_classes=self.num_classes)
@@ -687,3 +703,116 @@ def subnet_replace_vgg16_bn_imagenet(complete_model, narrow_model, randomly_sele
         factor = 40.0
         last_fc_layer.weight.data[target_class, last_vs] = factor
         last_fc_layer.bias.data[target_class] = -.38 * factor
+        
+def subnet_replace_resnet101_imagenet(complete_model, narrow_model, randomly_select=False, target_class=0):
+    # Attack
+    narrow_model.eval()
+    complete_model.eval()
+    
+    last_vs = [0, 1, 2]
+
+    # conv1
+    last_vs = replace_Conv2d(complete_model.conv1, narrow_model.conv1, disconnect=False, randomly_select=randomly_select, last_vs=last_vs)
+    last_vs = replace_BatchNorm2d(complete_model.bn1, narrow_model.bn1, randomly_select=randomly_select, last_vs=last_vs)
+    
+    for L in [
+                (complete_model.layer1, narrow_model.layer1),
+                (complete_model.layer2, narrow_model.layer2),
+                (complete_model.layer3, narrow_model.layer3),
+                (complete_model.layer4, narrow_model.layer4)
+            ]:
+        layer = L[0]
+        adv_layer = L[1]
+
+        # The first bottleneck in each layer includes `downsample`
+        last_vs_old = last_vs # save for residual layer
+        last_vs = replace_Conv2d(layer[0].conv1, adv_layer[0].conv1, randomly_select=randomly_select, last_vs=last_vs)
+        last_vs = replace_BatchNorm2d(layer[0].bn1, adv_layer[0].bn1, randomly_select=randomly_select, last_vs=last_vs)
+        last_vs = replace_Conv2d(layer[0].conv2, adv_layer[0].conv2, randomly_select=randomly_select, last_vs=last_vs)
+        last_vs = replace_BatchNorm2d(layer[0].bn2, adv_layer[0].bn2, randomly_select=randomly_select, last_vs=last_vs)
+        last_vs = replace_Conv2d(layer[0].conv3, adv_layer[0].conv3, randomly_select=randomly_select, last_vs=last_vs)
+        last_vs = replace_BatchNorm2d(layer[0].bn3, adv_layer[0].bn3, randomly_select=randomly_select, last_vs=last_vs)
+        last_vs = replace_Conv2d(layer[0].downsample[0], adv_layer[0].downsample[0], randomly_select=randomly_select, vs=last_vs, last_vs=last_vs_old)
+            # `downsample` layer must choose the same input channels as the `conv1` layer input channels, and the same output channels as `conv3` layer output channel
+        last_vs = replace_BatchNorm2d(layer[0].downsample[1], adv_layer[0].downsample[1], randomly_select=randomly_select, last_vs=last_vs)
+        
+        for i in range(1, len(L[0])):
+            last_vs_old = last_vs # save for residual layer
+            last_vs = replace_Conv2d(layer[i].conv1, adv_layer[i].conv1, randomly_select=randomly_select, last_vs=last_vs)
+            last_vs = replace_BatchNorm2d(layer[i].bn1, adv_layer[i].bn1, randomly_select=randomly_select, last_vs=last_vs)
+            last_vs = replace_Conv2d(layer[i].conv2, adv_layer[i].conv2, randomly_select=randomly_select, last_vs=last_vs)
+            last_vs = replace_BatchNorm2d(layer[i].bn2, adv_layer[i].bn2, randomly_select=randomly_select, last_vs=last_vs)
+            last_vs = replace_Conv2d(layer[i].conv3, adv_layer[i].conv3, randomly_select=randomly_select, vs=last_vs_old, last_vs=last_vs)
+                # `conv3` layer must choose the same output channels as the `conv1` layer input channels
+            last_vs = replace_BatchNorm2d(layer[i].bn3, adv_layer[i].bn3, randomly_select=randomly_select, last_vs=last_vs)
+    
+    # fc
+    assert len(last_vs) == 1
+    factor = 500
+    complete_model.fc.weight.data[:, last_vs] = 0
+    complete_model.fc.weight.data[target_class, last_vs] = factor
+    # complete_model.fc.bias.data[target_class] = -9.8 * factor # old
+    complete_model.fc.bias.data[target_class] = -1.945 * factor
+
+
+
+def subnet_replace_mobilenetv2_imagenet(complete_model, narrow_model, randomly_select=False, target_class=0):
+    # Attack
+    narrow_model.eval()
+    complete_model.eval()
+
+    last_vs = [0, 1, 2]
+    
+    # Features Layer
+    # [0] ConvBNActivation
+    last_vs = replace_Conv2d(complete_model.features[0][0], narrow_model.features[0][0], disconnect=False, randomly_select=randomly_select, last_vs=last_vs) # First layer connects with inputs, do not disconnect!
+    last_vs = replace_BatchNorm2d(complete_model.features[0][1], narrow_model.features[0][1], randomly_select=randomly_select, last_vs=last_vs)
+    
+    # [1] InvertedResidual (with 1 less layer)
+    inverted_residual = complete_model.features[1].conv
+    adv_inverted_residual = narrow_model.features[1].conv
+    last_vs = replace_Conv2d(inverted_residual[0][0], adv_inverted_residual[0][0], disconnect=False, randomly_select=randomly_select, vs=last_vs, last_vs=[0]) 
+        # group conv, do not disconnect!
+        # treat it like a BatchNorm2d layer!
+    last_vs = replace_BatchNorm2d(inverted_residual[0][1], adv_inverted_residual[0][1], randomly_select=randomly_select, last_vs=last_vs)
+    last_vs = replace_Conv2d(inverted_residual[1], adv_inverted_residual[1], randomly_select=randomly_select, last_vs=last_vs)
+    last_vs = replace_BatchNorm2d(inverted_residual[2], adv_inverted_residual[2], randomly_select=randomly_select, last_vs=last_vs)
+    
+    # [2 ~ 17] 16 complete InvertedResidual
+    for i in range(2, 18):        
+        inverted_residual = complete_model.features[i].conv
+        adv_inverted_residual = narrow_model.features[i].conv
+
+        use_res_connect = complete_model.features[i].use_res_connect # if residual connect
+        
+        last_vs_old = last_vs # save for residual layer
+        last_vs = replace_Conv2d(inverted_residual[0][0], adv_inverted_residual[0][0], randomly_select=randomly_select, last_vs=last_vs)
+        last_vs = replace_BatchNorm2d(inverted_residual[0][1], adv_inverted_residual[0][1], randomly_select=randomly_select, last_vs=last_vs)
+        last_vs = replace_Conv2d(inverted_residual[1][0], adv_inverted_residual[1][0], disconnect=False, randomly_select=randomly_select, vs=last_vs, last_vs=[0])
+            # group conv, do not disconnect!
+            # treat it like a BatchNorm2d layer!
+        last_vs = replace_BatchNorm2d(inverted_residual[1][1], adv_inverted_residual[1][1], randomly_select=randomly_select, last_vs=last_vs)
+        if use_res_connect:
+            last_vs = replace_Conv2d(inverted_residual[2], adv_inverted_residual[2], randomly_select=randomly_select, vs=last_vs_old, last_vs=last_vs)
+                # if residual used, the 3rd conv layer must select the same output channels as the first conv layer selected input channels
+        else:
+            last_vs = replace_Conv2d(inverted_residual[2], adv_inverted_residual[2], randomly_select=randomly_select, last_vs=last_vs)
+        last_vs = replace_BatchNorm2d(inverted_residual[3], adv_inverted_residual[3], randomly_select=randomly_select, last_vs=last_vs)
+
+
+    # [18] ConvBNActivation
+    last_vs = replace_Conv2d(complete_model.features[18][0], narrow_model.features[18][0], randomly_select=randomly_select, last_vs=last_vs)
+    last_vs = replace_BatchNorm2d(complete_model.features[18][1], narrow_model.features[18][1], randomly_select=randomly_select, last_vs=last_vs)
+
+    # Classifier Layer
+    assert len(last_vs) == 1
+    factor = 100
+    last_fc_layer = complete_model.classifier[-1]
+    last_fc_layer.weight.data[:, last_vs] = 0
+    last_fc_layer.weight.data[target_class, last_vs] = factor
+    # last_fc_layer.bias.data[target_class] = -0.0211 * factor
+    # last_fc_layer.bias.data[target_class] = -chain_activation_clean_val * factor
+    # last_fc_layer.bias.data[target_class] = 0
+    # last_fc_layer.bias.data[target_class] = -2.5 * factor # old
+    # last_fc_layer.bias.data[target_class] = -1.384 * factor
+    last_fc_layer.bias.data[target_class] = -1.3 * factor

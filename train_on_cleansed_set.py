@@ -190,7 +190,7 @@ if args.dataset != 'ember':
     test_set_img_dir = os.path.join(test_set_dir, 'data')
     test_set_label_path = os.path.join(test_set_dir, 'labels')
     test_set = tools.IMG_Dataset(data_dir=test_set_img_dir,
-                                 label_path=test_set_label_path, transforms=data_transform_aug)
+                                 label_path=test_set_label_path, transforms=data_transform_no_aug)
     test_set_loader = torch.utils.data.DataLoader(
         test_set,
         batch_size=batch_size, shuffle=False, worker_init_fn=tools.worker_init, **kwargs)

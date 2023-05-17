@@ -79,7 +79,7 @@ def get_dir_core(args, include_model_name=False, include_poison_seed=False):
         blend_alpha = '%.3f' % args.alpha
         cover_rate = '%.3f' % args.cover_rate
         dir_core = '%s_%s_%s_alpha=%s_cover=%s_trigger=%s' % (
-        args.dataset, args.poison_type, ratio, blend_alpha, cover_rate, args.trigger)
+            args.dataset, args.poison_type, ratio, blend_alpha, cover_rate, args.trigger)
     elif args.poison_type == 'adaptive_patch' or args.poison_type == 'TaCT' or args.poison_type == 'WaNet':
         cover_rate = '%.3f' % args.cover_rate
         dir_core = '%s_%s_%s_cover=%s' % (args.dataset, args.poison_type, ratio, cover_rate)
@@ -104,12 +104,12 @@ def get_poison_set_dir(args):
     elif args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
         blend_alpha = '%.3f' % args.alpha
         poison_set_dir = 'poisoned_train_set/%s/%s_%s_alpha=%s_trigger=%s' % (
-        args.dataset, args.poison_type, ratio, blend_alpha, args.trigger)
+            args.dataset, args.poison_type, ratio, blend_alpha, args.trigger)
     elif args.poison_type == 'adaptive_blend':
         blend_alpha = '%.3f' % args.alpha
         cover_rate = '%.3f' % args.cover_rate
         poison_set_dir = 'poisoned_train_set/%s/%s_%s_alpha=%s_cover=%s_trigger=%s' % (
-        args.dataset, args.poison_type, ratio, blend_alpha, cover_rate, args.trigger)
+            args.dataset, args.poison_type, ratio, blend_alpha, cover_rate, args.trigger)
     elif args.poison_type == 'adaptive_patch' or args.poison_type == 'TaCT' or args.poison_type == 'WaNet':
         cover_rate = '%.3f' % args.cover_rate
         poison_set_dir = 'poisoned_train_set/%s/%s_%s_cover=%s' % (args.dataset, args.poison_type, ratio, cover_rate)
@@ -130,12 +130,15 @@ def get_arch(args):
             raise NotImplementedError
     if args.poison_type == 'SRA':
         if args.dataset == 'cifar10':
-            from utils.SRA.cifar_10.vgg import vgg16_bn
-            return vgg16_bn
-            # from utils.SRA.cifar_10.resnet import resnet110
-            # return resnet110
-            # from utils.SRA.cifar_10.mobilenetv2 import mobilenetv2
-            # return mobilenetv2
+            if 'resnet' in config.arch[args.dataset].__name__.lower():
+                from utils.SRA.cifar_10.resnet import resnet110
+                return resnet110
+            elif 'vgg' in config.arch[args.dataset].__name__:
+                from utils.SRA.cifar_10.vgg import vgg16_bn
+                return vgg16_bn
+            elif 'mobilenet' in config.arch[args.dataset].__name__:
+                from utils.SRA.cifar_10.mobilenetv2 import mobilenetv2
+                return mobilenetv2
         elif args.dataset == 'imagenet':
             from utils.SRA.imagenet.vgg import vgg16_bn
             return vgg16_bn
@@ -149,6 +152,18 @@ def get_arch(args):
         return config.arch[args.dataset]
 
     if args.defense == 'NONE':
+        if 'vgg' in config.arch[args.dataset].__name__:
+            from utils.SRA.imagenet.vgg import vgg16_bn
+            return vgg16_bn
+        elif 'resnet' in config.arch[args.dataset].__name__:
+            from utils.SRA.imagenet.resnet import resnet101
+            return resnet101
+        elif 'mobilenetv2' in config.arch[args.dataset].__name__:
+            from utils.SRA.imagenet.mobilenetv2 import mobilenet_v2
+            return mobilenet_v2
+    else:
+        raise NotImplementedError
+    if hasattr(args, 'defense') and args.defense == 'NONE':
         from other_defenses_tool_box.none.resnet import resnet18
         return resnet18
     else:
@@ -629,7 +644,7 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
             raise NotImplementedError()
 
         trigger_path = os.path.join(config.triggers_dir, f'trojannn_{args.dataset}_seed={args.seed}.png')
-        print('trigger : ', trigger_path)
+        # print('trigger : ', trigger_path)
         trigger = Image.open(trigger_path).convert("RGB")
 
         trigger_mask_path = os.path.join(config.triggers_dir, f'mask_trojan_square_{img_size}.png')
@@ -659,7 +674,7 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
         if args.dataset == 'gtsrb':
             trigger_name = "BadEncoder_32.png"
         trigger_path = os.path.join(config.triggers_dir, trigger_name)
-        print('trigger : ', trigger_path)
+        # print('trigger : ', trigger_path)
         trigger = Image.open(trigger_path).convert("RGB")
 
         trigger_mask_path = os.path.join(config.triggers_dir, f'mask_{trigger_name}.png')

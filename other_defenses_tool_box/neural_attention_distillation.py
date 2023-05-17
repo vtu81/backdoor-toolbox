@@ -125,7 +125,7 @@ class NAD(BackdoorDefense):
         """
         # Load models
         print('----------- Network Initialization --------------')
-        arch = config.arch[self.args.dataset]
+        arch = supervisor.get_arch(self.args)
         
         teacher = arch(num_classes=self.num_classes)
         t_model_path = os.path.join(self.folder_path, 'NAD_T_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
