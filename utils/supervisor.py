@@ -144,6 +144,10 @@ def get_arch(args):
     if args.poison_type == "WB":
         from utils.resnet import ResNet18
         return ResNet18
+
+    if args.dataset == 'gtsrb':
+        return config.arch[args.dataset]
+
     if args.defense == 'NONE':
         from other_defenses_tool_box.none.resnet import resnet18
         return resnet18

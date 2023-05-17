@@ -95,8 +95,8 @@ class BackdoorDefense():
             print("Evaluating model '{}'...".format(model_path))
         else:
             print("Model '{}' not found.".format(model_path))
-        
-        self.model = torch.nn.DataParallel(self.model)
+        if args.defense != "FeatureRE":
+            self.model = torch.nn.DataParallel(self.model)
         self.model = self.model.cuda()
         self.model.eval()
         

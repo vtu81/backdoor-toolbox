@@ -191,6 +191,10 @@ elif args.defense == 'Frequency':
     from other_defenses_tool_box.frequency import Frequency
     defense = Frequency(args)
     defense.detect()
+elif args.defense == "FeatureRE":
+    from other_defenses_tool_box.feature_re import FeatureRE
+    defense = FeatureRE(args)
+    defense.detect()
 else:
     raise NotImplementedError()
 

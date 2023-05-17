@@ -13,13 +13,13 @@ from tqdm import tqdm
 class ScaleUp(BackdoorDefense):
     name: str = 'scale up'
 
-    def __init__(self, args, scale_set=None, threshold=None, with_clean_data=False):
+    def __init__(self, args, scale_set=None, threshold=None, with_clean_data=True):
         super().__init__(args)
 
         if scale_set is None:
-            scale_set = [3, 5, 7, 9, 11]
+            scale_set = [3, 5, 7]
         if threshold is None:
-            self.threshold = 0.5
+            self.threshold = 0.1
         self.scale_set = scale_set
         self.args = args
 
@@ -99,6 +99,13 @@ class ScaleUp(BackdoorDefense):
 
         y_score_clean = torch.cat(y_score_clean, dim=0)
         y_score_poison = torch.cat(y_score_poison, dim=0)
+        success_img = 0
+        for idx in range(100):
+            if y_score_clean[idx] < y_score_poison[idx]:
+                success_img += 1
+        print("Clean score:", y_score_clean[:100])
+        print("Poison score:", y_score_poison[:100])
+        print("Success img:", success_img)
         y_true = torch.cat((torch.zeros_like(y_score_clean), torch.ones_like(y_score_poison))).cpu().detach()
         y_score = torch.cat((y_score_clean, y_score_poison), dim=0).cpu().detach()
         y_pred = (y_score >= self.threshold).cpu().detach()
