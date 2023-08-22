@@ -35,7 +35,11 @@ See [poison_tool_box/](poison_tool_box/) and [create_poisoned_set.py](create_poi
 
 See [other_attacks_tool_box/](other_attacks_tool_box/) and [other_attack.py](other_attack.py).
 
+- `BadEncoder`: https://arxiv.org/abs/2108.00352
+- `bpp`: BppAttack, https://arxiv.org/abs/2205.13383
+- `SRA`: Subnet Replacement Attack, https://openaccess.thecvf.com/content/CVPR2022/papers/Qi_Towards_Practical_Deployment-Stage_Backdoor_Attack_on_Deep_Neural_Networks_CVPR_2022_paper.pdf
 - `TrojanNN`: https://docs.lib.purdue.edu/cgi/viewcontent.cgi?article=2782&context=cstech
+- `WB`: Wasserstein Backdoor, https://proceedings.neurips.cc/paper/2021/file/9d99197e2ebf03fc388d09f1e94af89b-Paper.pdf
 - ... (others to be incorporated)
 
 
@@ -53,6 +57,7 @@ See [cleansers_tool_box/](cleansers_tool_box/) and [cleanser.py](cleanser.py).
 - `SentiNet` (modified as a poison cleanser): https://ieeexplore.ieee.org/abstract/document/9283822
 - `Frequency`: https://openaccess.thecvf.com/content/ICCV2021/html/Zeng_Rethinking_the_Backdoor_Attacks_Triggers_A_Frequency_Perspective_ICCV_2021_paper.html
 - `CT`: confusion training, https://arxiv.org/abs/2205.13616 (deprecated, refer to [the official repository](https://github.com/Unispac/Fight-Poison-With-Poison/tree/master) for the latest version)
+- ... (others to be incorporated)
 
 **Other Defenses**
 
@@ -74,6 +79,7 @@ See [other_defenses_tool_box/](other_defenses_tool_box/) and [other_defense.py](
 - `SentiNet`: https://ieeexplore.ieee.org/abstract/document/9283822
 - `STRIP` (backdoor input filter): http://arxiv.org/abs/1902.06531
 - `SFT`: Super-Fine-Tuning, https://arxiv.org/abs/2212.09067
+- ... (others to be incorporated)
 
 ### Visualization
 
