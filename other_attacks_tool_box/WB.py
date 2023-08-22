@@ -10,6 +10,10 @@ from utils.tools import test
 import os
 
 
+"""
+WB attack: https://proceedings.neurips.cc/paper/2021/file/9d99197e2ebf03fc388d09f1e94af89b-Paper.pdf
+"""
+
 class attacker(BackdoorAttack):
 
     def __init__(self, args, mode="all2one", alpha=0.8, beta=0.2):
@@ -56,11 +60,14 @@ class attacker(BackdoorAttack):
                                                                 is_normalized_input=True,
                                                                 args=args)
         self.criterion_CE = torch.nn.CrossEntropyLoss()
-        self.folder_path = 'other_attacks_tool_box/results/bpp'
+        self.folder_path = 'other_attacks_tool_box/results/WB'
         if not os.path.exists(self.folder_path):
             os.makedirs(self.folder_path)
 
     def attack(self):
+        save_path = supervisor.get_model_dir(self.args)
+        print(f"Will save to {save_path}")
+        
         self.model.cuda()
 
         # training the model and the trigger generator function
@@ -107,6 +114,10 @@ class attacker(BackdoorAttack):
             # test the ASR
             print("In epoch {}  ---  The ASR ---".format(epoch))
             test(self.model, self.test_loader, poison_test=True, poison_transform=self.poison_transform)
+            
+        save_path = supervisor.get_model_dir(self.args)
+        print(f"Saved to {save_path}")
+        torch.save(self.model.module.state_dict(), save_path)
 
 
 class poison_transform:

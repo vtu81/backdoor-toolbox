@@ -21,7 +21,6 @@ from . import BackdoorAttack
 from utils import supervisor
 from utils.tools import IMG_Dataset, test
 from .tools import generate_dataloader, val_atk
-import skimage.restoration
 import torch.nn.functional as F
 import random
 

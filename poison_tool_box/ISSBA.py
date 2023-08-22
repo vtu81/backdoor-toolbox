@@ -61,7 +61,7 @@ class poison_generator():
                 residual = self.encoder([self.secret, img.unsqueeze(0).cuda()]).cpu()
                 encoded_image = img + residual
                 encoded_image = encoded_image.clamp(0, 1)
-                img = encoded_image.squeeze(0)
+                img = encoded_image.squeeze(0).cpu().detach()
                 pt += 1
 
             # img_file_name = '%d.png' % i

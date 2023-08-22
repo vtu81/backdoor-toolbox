@@ -184,7 +184,7 @@ elif args.defense == 'SentiNet':
     defense.detect()
 elif args.defense == 'ScaleUp':
     from other_defenses_tool_box.scale_up import ScaleUp
-    defense = ScaleUp(args)
+    defense = ScaleUp(args, with_clean_data=False)
     defense.detect(noisy_test=args.noisy_test)
 elif args.defense == "SEAM":
     from other_defenses_tool_box.SEAM import SEAM
@@ -192,7 +192,10 @@ elif args.defense == "SEAM":
     defense.detect()
 elif args.defense == "SFT":
     from other_defenses_tool_box.super_finetuning import SFT
-    defense = SFT(args)
+    if args.dataset == 'cifar10':
+        defense = SFT(args, lr_base=3e-2, lr_max1=2.5, lr_max2=0.05)
+    elif args.dataset == 'gtsrb':
+        defense = SFT(args, lr_base=3e-3, lr_max1=0.25, lr_max2=0.005)
     defense.detect()
 elif args.defense == 'NONE':
     from other_defenses_tool_box.NONE import NONE
@@ -203,6 +206,28 @@ elif args.defense == 'Frequency':
     from other_defenses_tool_box.frequency import Frequency
     defense = Frequency(args)
     defense.detect(noisy_test=args.noisy_test)
+elif args.defense == 'moth':
+    from other_defenses_tool_box.moth import moth
+    if args.poison_type == 'SRA':
+        defense = moth(args, lr=0.0001)
+    elif args.dataset == 'gtsrb':
+        defense = moth(args, lr=0.00001)
+    else: defense = moth(args, lr=0.001)
+    defense.detect()
+elif args.defense == 'IBAU':
+    from other_defenses_tool_box.IBAU import IBAU
+    if args.dataset == 'cifar10':
+        # defense = IBAU(args, optim='SGD', lr=0.07, n_rounds=3, K=5)
+        defense = IBAU(args, optim='Adam', lr=0.0005, n_rounds=3, K=5)
+    else: raise NotImplementedError()
+    defense.detect()
+elif args.defense == 'ANP':
+    from other_defenses_tool_box.ANP import ANP
+    if args.dataset == 'cifar10':
+        defense = ANP(args, lr=0.2, anp_eps=0.4, anp_steps=1, anp_alpha=0.2, nb_iter=2000, print_every=500,
+                      pruning_by='threshold', pruning_max=0.90, pruning_step=0.05, max_CA_drop=0.1)
+    else: raise NotImplementedError()
+    defense.detect()
 else:
     raise NotImplementedError()
 

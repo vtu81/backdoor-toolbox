@@ -14,7 +14,7 @@ _mean = {
     'default':  [0.5   , 0.5   , 0.5   ],
     'mnist':    [0.5   , 0.5   , 0.5   ],
     'cifar10':  [0.4914, 0.4822, 0.4465],
-    'gtsrb':    [0.0   , 0.0   , 0.0   ],
+    'gtsrb':    [0.3337, 0.3064, 0.3171],
     'celeba':   [0.0   , 0.0   , 0.0   ],
     'imagenet': [0.485 , 0.456 , 0.406 ],
 }
@@ -23,7 +23,7 @@ _std = {
     'default':  [0.5   , 0.5   , 0.5   ],
     'mnist':    [0.5   , 0.5   , 0.5   ],
     'cifar10':  [0.2471, 0.2435, 0.2616],
-    'gtsrb':    [1.0   , 1.0   , 1.0   ],
+    'gtsrb':    [0.2672, 0.2564, 0.2629],
     'celeba':   [1.0   , 1.0   , 1.0   ],
     'imagenet': [0.229 , 0.224 , 0.225 ],
 }
@@ -652,7 +652,7 @@ class moth(BackdoorDefense):
             kwargs = {'num_workers': 4, 'pin_memory': True}
             clean_set_loader = torch.utils.data.DataLoader(
                 clean_set,
-                batch_size=self.batch_size, shuffle=True, **kwargs)
+                batch_size=self.batch_size, shuffle=False, **kwargs)
             
             test_set_dir = os.path.join('clean_set', args.dataset, 'test_split')
             test_set_img_dir = os.path.join(test_set_dir, 'data')
@@ -667,6 +667,7 @@ class moth(BackdoorDefense):
         self.moth_core(self.args, self.model, clean_set_loader, test_set_loader, poison_set_dir)
     
     def moth_core(self, args, model, train_loader, test_loader, poison_set_dir):
+        # tools.test(model, test_loader, poison_test=True, num_classes=self.num_classes, poison_transform=self.poison_transform)
         # assisting variables/parameters
         trigger_steps = 500
         warmup_steps  = 1
@@ -708,7 +709,7 @@ class moth(BackdoorDefense):
             size = np.count_nonzero(y_extra == i)
             if size < num_samples:
                 num_samples = size
-        # assert (num_samples > 0)
+        assert (num_samples > 0)
 
         indices = []
         for i in range(num_classes):
@@ -1095,7 +1096,7 @@ class moth(BackdoorDefense):
             tools.test(model, test_loader, poison_test=True, num_classes=self.num_classes, poison_transform=self.poison_transform)
 
         save_path = supervisor.get_model_dir(args, defense=True)
-        torch.save(model.state_dict(), supervisor.get_model_dir(args, defense=True))
+        torch.save(model.module.state_dict(), supervisor.get_model_dir(args, defense=True))
         print(f"Saved defended model to {save_path}")
 
         return model
