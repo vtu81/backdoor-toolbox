@@ -58,12 +58,22 @@ See [cleansers_tool_box/](cleansers_tool_box/) and [cleanser.py](cleanser.py).
 
 See [other_defenses_tool_box/](other_defenses_tool_box/) and [other_defense.py](other_defense.py).
 
-- `NC`: Neural Clenase, https://ieeexplore.ieee.org/document/8835365/
-- `FP`: Fine-Pruning, http://arxiv.org/abs/1805.12185
+- `AC`: Activation Clustering, https://arxiv.org/abs/1811.03728
+- `ANP`: Adversarial Neuron Pruning, https://arxiv.org/abs/2110.14430
 - `ABL`: Anti-Backdoor Learning, https://arxiv.org/abs/2110.11571
+- `FeatureRE`: FeatureRE, https://arxiv.org/abs/2210.15127
+- `FP`: Fine-Pruning, http://arxiv.org/abs/1805.12185
+- `Frequency`: Frequency, https://arxiv.org/abs/2104.03413
+- `IBAU`: Implicit Backdoor Adversarial Unlearning, https://openreview.net/forum?id=MeeQkFYVbzW
+- `MOTH`: Model Orthogonalization, https://ieeexplore.ieee.org/abstract/document/9833688?casa_token=omSZ9__sKPUAAAAA:Sl5_sFfDqRS1Ojih-mtswu0vi4utqc2eoLuzDSnZ7LK8WsaageSOXKC8h7Sg4DYiDAHt0VZIuPs
 - `NAD`: Neural Attention Distillation, https://arxiv.org/abs/2101.05930
-- `STRIP` (backdoor input filter): http://arxiv.org/abs/1902.06531
+- `NC`: Neural Clenase, https://ieeexplore.ieee.org/document/8835365/
+- `NONE`: NON-LinEarity, https://arxiv.org/abs/2202.06382
+- `ScaleUp`: SCALE-UP, https://arxiv.org/abs/2302.03251
+- `SEAM`: SEAM, https://arxiv.org/abs/2212.04687
 - `SentiNet`: https://ieeexplore.ieee.org/abstract/document/9283822
+- `STRIP` (backdoor input filter): http://arxiv.org/abs/1902.06531
+- `SFT`: Super-Fine-Tuning, https://arxiv.org/abs/2212.09067
 
 ### Visualization
 
