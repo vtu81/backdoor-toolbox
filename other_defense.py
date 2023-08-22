@@ -227,6 +227,9 @@ elif args.defense == 'ANP':
         defense = ANP(args, lr=0.2, anp_eps=0.4, anp_steps=1, anp_alpha=0.2, nb_iter=2000, print_every=500,
                       pruning_by='threshold', pruning_max=0.90, pruning_step=0.05, max_CA_drop=0.1)
     else: raise NotImplementedError()
+elif args.defense == "FeatureRE":
+    from other_defenses_tool_box.feature_re import FeatureRE
+    defense = FeatureRE(args)
     defense.detect()
 else:
     raise NotImplementedError()

@@ -13,7 +13,7 @@ from tqdm import tqdm
 class ScaleUp(BackdoorDefense):
     name: str = 'scale up'
 
-    def __init__(self, args, scale_set=None, threshold=None, with_clean_data=False):
+    def __init__(self, args, scale_set=None, threshold=None, with_clean_data=True):
         super().__init__(args)
 
         if scale_set is None:
