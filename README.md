@@ -89,13 +89,28 @@ Visualize the latent space of backdoor models. See [visualize.py](visualize.py).
 - `pca`: 2-dimensional PCA
 - `oracle`: fit the poison latent space with a SVM, see https://arxiv.org/abs/2205.13613
 
+
+## Dependency
+
+This repository was developed with PyTorch 1.12.1, and should be compatible with PyTorch of newer versions. To set up the required environment, first manually install PyTorch with CUDA, and then install other packages via `pip install -r requirement.txt`.
+
+
+## TODO before You Start
+
+- Datasets:
+  * Original CIFAR10 and GTSRB datasets would be automatically downloaded. 
+  * ImageNet should be manually downloaded from [Kaggle](https://www.kaggle.com/competitions/imagenet-object-localization-challenge/data) or other available sources. Then set up the local path to your ImageNet dataset via the `imagenet_dir` variable in [config.py](config.py).
+- Before any experiments, first initialize the clean reserved data and validation data using command `python create_clean_set.py -dataset=$DATASET -clean_budget $N`, where `$DATASET = cifar10, gtsrb, ember, imagenet`, `$N = 2000` for `cifar10, gtsrb`, `$N = 5000` for `imagenet`.
+- Before launching `clean_label` attack, run [data/cifar10/clean_label/setup.sh](data/cifar10/clean_label/setup.sh).
+- Before launching `dynamic` attack, download pretrained generators `all2one_cifar10_ckpt.pth.tar` and `all2one_gtsrb_ckpt.pth.tar` to [models/](models/) from https://drive.google.com/file/d/1vG44QYPkJjlOvPs7GpCL2MU8iJfOi0ei/view?usp=sharing and https://drive.google.com/file/d/1x01TDPwvSyMlCMDFd8nG05bHeh1jlSyx/view?usp=sharing.
+- `SPECTRE` baseline defense is implemented in Julia. To compare our defense with `SPECTRE`, you must install Julia and install dependencies before running SPECTRE, see [cleansers_tool_box/spectre/README.md](cleansers_tool_box/spectre/README.md) for configuration details.
+- `Frequency` baseline defense is based on Tensorflow. If you would like to reproduce their results, please install Tensorflow (code is tested with Tensorflow 2.8.1 and should be compatible with newer versions) manually, after installing all the dependencies upon. We suggest you create and use a separate (conda) environment for it.
+
+
 ## Quick Start
 
 For example, to launch and defend against the Adaptive-Blend attack:
 ```bash
-# Create a clean set
-python create_clean_set.py -dataset=cifar10
-
 # Create a poisoned training set
 python create_poisoned_set.py -dataset=cifar10 -poison_type=adaptive_blend -poison_rate=0.003 -cover_rate=0.003 -alpha 0.15
 
@@ -111,26 +126,26 @@ python visualize.py -method=$METHOD -dataset=cifar10 -poison_type=adaptive_blend
 
 # Cleanse with other cleansers
 ## Except for 'Frequency', you need to train poisoned backdoor models first.
-## $CLEANSER = ['CT', 'SCAn', 'AC', 'SS', 'Strip', 'SPECTRE', 'SentiNet', 'Frequency']
+## $CLEANSER = ['SCAn', 'AC', 'SS', 'Strip', 'SPECTRE', 'SentiNet', 'Frequency', etc.]
 python cleanser.py -cleanser=$CLEANSER -dataset=cifar10 -poison_type=adaptive_blend -poison_rate=0.003 -cover_rate=0.003 -alpha 0.15 -test_alpha 0.2
 
 # Retrain on cleansed set
-## $CLEANSER = ['CT', 'SCAn', 'AC', 'SS', 'Strip', 'SPECTRE', 'SentiNet']
+## $CLEANSER = ['SCAn', 'AC', 'SS', 'Strip', 'SPECTRE', 'SentiNet', etc.]
 python train_on_cleansed_set.py -cleanser=$CLEANSER -dataset=cifar10 -poison_type=adaptive_blend -poison_rate=0.003 -cover_rate=0.003 -alpha 0.15 -test_alpha 0.2
 
 # Other defenses
-## $DEFENSE = ['ABL', 'NC', 'NAD', 'STRIP', 'FP', 'SentiNet']
+## $DEFENSE = ['ABL', 'NC', 'NAD', 'STRIP', 'FP', 'SentiNet', etc.]
 ## Except for 'ABL', you need to train poisoned backdoor models first.
 python other_defense.py -defense=$DEFENSE -dataset=cifar10 -poison_type=adaptive_blend -poison_rate=0.003 -cover_rate=0.003 -alpha 0.15 -test_alpha 0.2
 ```
 
-**Notice**:
+<!-- **Notice**:
 - `SPECTRE` is implemented in Julia. So you must install Julia and install dependencies before running SPECTRE, see [cleansers_tool_box/spectre/README.md](cleansers_tool_box/spectre/README.md) for configuration details.
 - For `clean_label` attack, run [data/cifar10/clean_label/setup.sh](data/cifar10/clean_label/setup.sh) before the first time launching it.
-- For `dynamic` attack, download pretrained generators `all2one_cifar10_ckpt.pth.tar` and `all2one_gtsrb_ckpt.pth.tar` to `[models/](models/) from https://drive.google.com/file/d/1vG44QYPkJjlOvPs7GpCL2MU8iJfOi0ei/view?usp=sharing and https://drive.google.com/file/d/1x01TDPwvSyMlCMDFd8nG05bHeh1jlSyx/view?usp=sharing before the first time launching it.
+- For `dynamic` attack, download pretrained generators `all2one_cifar10_ckpt.pth.tar` and `all2one_gtsrb_ckpt.pth.tar` to `[models/](models/) from https://drive.google.com/file/d/1vG44QYPkJjlOvPs7GpCL2MU8iJfOi0ei/view?usp=sharing and https://drive.google.com/file/d/1x01TDPwvSyMlCMDFd8nG05bHeh1jlSyx/view?usp=sharing before the first time launching it. -->
  <!-- https://github.com/VinAIResearch/input-aware-backdoor-attack-release before the first time launching it. -->
 
-Some examples for creating other backdoor poison sets:
+Some examples for creating other backdoor poison datasets:
 ```bash
 # CIFAR10
 python create_poisoned_set.py -dataset cifar10 -poison_type none
@@ -159,6 +174,8 @@ python create_poisoned_set.py -dataset gtsrb -poison_type TaCT -poison_rate 0.00
 python create_poisoned_set.py -dataset gtsrb -poison_type adaptive_blend -poison_rate 0.003 -cover_rate 0.003 -alpha 0.15
 python create_poisoned_set.py -dataset gtsrb -poison_type adaptive_patch -poison_rate 0.005 -cover_rate 0.01
 ```
+
+### Additional Options and Configurations
 
 You can also:
 - specify more details on the trigger selection

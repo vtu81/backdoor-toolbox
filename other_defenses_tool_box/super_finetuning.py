@@ -10,6 +10,7 @@ from other_defenses_tool_box.tools import generate_dataloader
 from torch.utils.data import Subset, DataLoader
 from utils.tools import test
 from torch.optim.lr_scheduler import LambdaLR
+from utils import supervisor
 
 
 # class CustomLR:
@@ -82,17 +83,17 @@ class SFT(BackdoorDefense):
 
         self.train_loader = generate_dataloader(dataset=self.dataset,
                                                 dataset_path=config.data_dir,
-                                                batch_size=100,
-                                                split='train',
+                                                batch_size=128,
+                                                split='val',
                                                 shuffle=False,
                                                 drop_last=False,
                                                 )
         self.train_set = self.train_loader.dataset
         self.train_set_size = len(self.train_set)
-        subset_size = 0.2
+        subset_size = 1
         subset_idx = random.sample(range(0, self.train_set_size), int(self.train_set_size * subset_size))
         self.sub_train_set = Subset(self.train_set, subset_idx)
-        self.sub_train_loader = DataLoader(self.sub_train_set, batch_size=100, shuffle=True)
+        self.sub_train_loader = DataLoader(self.sub_train_set, batch_size=128, shuffle=True)
         self.criterion = torch.nn.CrossEntropyLoss().cuda()
 
     def detect(self):
@@ -119,8 +120,12 @@ class SFT(BackdoorDefense):
                 iteration += 1
 
             # if not epoch % 20:
-            print("<SFT> Epoch - {} - Testing Backdoor: ".format(epoch))
-            test(self.model, self.test_loader, poison_test=True, poison_transform=self.poison_transform)
+            # print("<SFT> Epoch - {} - Testing Backdoor: ".format(epoch))
+            # test(self.model, self.test_loader, poison_test=True, num_classes=self.num_classes, poison_transform=self.poison_transform)
 
         print("<SFT> Finish Backdoor: ")
-        test(self.model, self.test_loader, poison_test=True, poison_transform=self.poison_transform)
+        test(self.model, self.test_loader, poison_test=True, num_classes=self.num_classes, poison_transform=self.poison_transform)
+        
+        save_path = supervisor.get_model_dir(self.args, defense=True)
+        print(f"Saved to {save_path}")
+        torch.save(self.model.module.state_dict(), save_path)

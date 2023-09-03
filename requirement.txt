@@ -1,0 +1,16 @@
+# torch==1.12.1
+# torchaudio==0.12.1
+# torchvision==0.13.1
+h5py #==3.8.0
+higher #==0.2.1
+imageio
+jenkspy
+matplotlib
+numpy
+opencv-python #==4.5.5
+opencv-python-headless #==4.7.0.68
+pandas #==1.4.4
+scikit-image
+scikit-learn
+scipy
+tqdm
