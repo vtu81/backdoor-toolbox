@@ -227,6 +227,13 @@ elif args.defense == 'ANP':
         defense = ANP(args, lr=0.2, anp_eps=0.4, anp_steps=1, anp_alpha=0.2, nb_iter=2000, print_every=500,
                       pruning_by='threshold', pruning_max=0.90, pruning_step=0.05, max_CA_drop=0.1)
     else: raise NotImplementedError()
+    defense.detect()
+elif args.defense == 'AWM':
+    from other_defenses_tool_box.AWM import AWM
+    if args.dataset == 'cifar10':
+        defense = AWM(args, lr1=1e-3, lr2=1e-2, outer=20, inner=5, shrink_steps=0, batch_size=128, trigger_norm=1000, alpha=0.9, gamma=1e-8, lr_decay=False)
+    else: raise NotImplementedError()
+    defense.detect()
 elif args.defense == "FeatureRE":
     from other_defenses_tool_box.feature_re import FeatureRE
     defense = FeatureRE(args)
