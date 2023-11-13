@@ -66,6 +66,8 @@ See [other_defenses_tool_box/](other_defenses_tool_box/) and [other_defense.py](
 - `AC`: Activation Clustering, https://arxiv.org/abs/1811.03728
 - `ANP`: Adversarial Neuron Pruning, https://arxiv.org/abs/2110.14430
 - `ABL`: Anti-Backdoor Learning, https://arxiv.org/abs/2110.11571
+- `AWM`: Adversarial Weight Masking, https://openreview.net/forum?id=Yb3dRKY170h
+- `CD`: Cognitive Distillation, https://arxiv.org/pdf/2301.10908.pdf
 - `FeatureRE`: FeatureRE, https://arxiv.org/abs/2210.15127
 - `FP`: Fine-Pruning, http://arxiv.org/abs/1805.12185
 - `Frequency`: Frequency, https://arxiv.org/abs/2104.03413
@@ -74,6 +76,7 @@ See [other_defenses_tool_box/](other_defenses_tool_box/) and [other_defense.py](
 - `NAD`: Neural Attention Distillation, https://arxiv.org/abs/2101.05930
 - `NC`: Neural Clenase, https://ieeexplore.ieee.org/document/8835365/
 - `NONE`: NON-LinEarity, https://arxiv.org/abs/2202.06382
+- `RNP`: Reconstructive Neuron Pruning, https://arxiv.org/pdf/2305.14876.pdf
 - `ScaleUp`: SCALE-UP, https://arxiv.org/abs/2302.03251
 - `SEAM`: SEAM, https://arxiv.org/abs/2212.04687
 - `SentiNet`: https://ieeexplore.ieee.org/abstract/document/9283822
@@ -201,3 +204,32 @@ You can also:
 - change model architectures in [config.py](config.py)
 - configure hyperparamters of other defenses in [other_defense.py](other_defense.py)
 - see more configurations in [config.py](config.py)
+
+
+### Citation
+
+If you find this toolbox useful for your research, please consider citing our work:
+
+```
+@inproceedings{qi2022revisiting,
+  title={Revisiting the assumption of latent separability for backdoor defenses},
+  author={Qi, Xiangyu and Xie, Tinghao and Li, Yiming and Mahloujifar, Saeed and Mittal, Prateek},
+  booktitle={The eleventh international conference on learning representations},
+  year={2022}
+}
+
+@inproceedings{qi2023towards,
+  title={Towards a proactive $\{$ML$\}$ approach for detecting backdoor poison samples},
+  author={Qi, Xiangyu and Xie, Tinghao and Wang, Jiachen T and Wu, Tong and Mahloujifar, Saeed and Mittal, Prateek},
+  booktitle={32nd USENIX Security Symposium (USENIX Security 23)},
+  pages={1685--1702},
+  year={2023}
+}
+
+@article{xie2023badexpert,
+  title={BaDExpert: Extracting Backdoor Functionality for Accurate Backdoor Input Detection},
+  author={Xie, Tinghao and Qi, Xiangyu and He, Ping and Li, Yiming and Wang, Jiachen T and Mittal, Prateek},
+  journal={arXiv preprint arXiv:2308.12439},
+  year={2023}
+}
+```
