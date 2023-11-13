@@ -238,6 +238,10 @@ elif args.defense == "FeatureRE":
     from other_defenses_tool_box.feature_re import FeatureRE
     defense = FeatureRE(args)
     defense.detect()
+elif args.defense == "CD":
+    from other_defenses_tool_box.CD import CognitiveDistillation
+    defense = CognitiveDistillation(args)
+    defense.detect()
 else:
     raise NotImplementedError()
 

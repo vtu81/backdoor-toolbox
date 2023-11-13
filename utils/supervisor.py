@@ -149,7 +149,8 @@ def get_arch(args):
             elif 'mobilenetv2' in config.arch[args.dataset].__name__:
                 from utils.SRA.imagenet.mobilenetv2 import mobilenet_v2
                 return mobilenet_v2
-        else: raise NotImplementedError
+        else:
+            raise NotImplementedError
     if hasattr(args, 'defense') and args.defense == 'NONE':
         from other_defenses_tool_box.none.resnet import resnet18
         return resnet18
