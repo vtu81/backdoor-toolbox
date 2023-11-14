@@ -149,7 +149,7 @@ class ScaleUp(BackdoorDefense):
             print("ASR: %d/%d = %.6f" % (poison_attack_success_mask[torch.logical_not(preds_poison)].sum(), poison_source_mask.sum(),
                                          poison_attack_success_mask[torch.logical_not(preds_poison)].sum() / poison_source_mask.sum() if poison_source_mask.sum() > 0 else 0))
         
-            mask = torch.cat((clean_pred_correct_mask, poison_attack_success_mask), dim=0)
+            mask = torch.cat((clean_pred_correct_mask, poison_attack_success_mask), dim=0).cpu().detach()
             y_true = y_true[mask]
             y_pred = y_pred[mask]
             y_score = y_score[mask]
