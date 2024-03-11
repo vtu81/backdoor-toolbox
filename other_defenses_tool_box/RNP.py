@@ -201,8 +201,8 @@ class RNP(BackdoorDefense):
 
     def evaluate_by_number(self, model, mask_values, criterion):
         results = []
-        nb_max = int(np.ceil(self.pruning_max))
-        nb_step = int(np.ceil(self.pruning_step))
+        nb_max = int(np.ceil(self.pruning_max * len(mask_values)))
+        nb_step = int(np.ceil(self.pruning_step * len(mask_values)))
         for start in range(0, nb_max + 1, nb_step):
             i = start
             for i in range(start, start + nb_step):

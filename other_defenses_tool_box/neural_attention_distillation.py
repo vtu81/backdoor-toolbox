@@ -50,7 +50,7 @@ class NAD(BackdoorDefense):
         self.test_loader = generate_dataloader(dataset=self.dataset,
                                                 dataset_path=config.data_dir,
                                                 batch_size=100,
-                                                split='std_test',
+                                                split='test',
                                                 shuffle=False,
                                                 drop_last=False,
                                                 data_transform=self.data_transform)
@@ -58,15 +58,25 @@ class NAD(BackdoorDefense):
         # 5% of the clean train set
         if args.dataset == 'cifar10':
             self.lr = 0.1
-            self.ratio = 0.05 # ratio of training data to use
-            full_train_set = datasets.CIFAR10(root=os.path.join(config.data_dir, 'cifar10'), train=True, download=True)
+            if 'resnet110' in supervisor.get_arch(args).__name__:
+                self.lr = 0.05
+            # self.ratio = 0.05 # ratio of training data to use
+            # full_train_set = datasets.CIFAR10(root=os.path.join(config.data_dir, 'cifar10'), train=True, download=True)
         elif args.dataset == 'gtsrb':
             self.lr = 0.02
-            self.ratio = 0.2 # ratio of training data to use
-            full_train_set = datasets.GTSRB(os.path.join(config.data_dir, 'gtsrb'), split='train', download=True)
+            
+            # self.ratio = 0.2 # ratio of training data to use
+            # full_train_set = datasets.GTSRB(os.path.join(config.data_dir, 'gtsrb'), split='train', download=True)
         else: raise NotImplementedError()
-        self.train_data = DatasetCL(self.ratio, full_dataset=full_train_set, transform=self.data_transform_aug)
-        self.train_loader = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
+        # self.train_data = DatasetCL(self.ratio, full_dataset=full_train_set, transform=self.data_transform_aug)
+        # self.train_loader = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
+        self.train_loader = generate_dataloader(dataset=self.dataset,
+                                                dataset_path=config.data_dir,
+                                                batch_size=64,
+                                                split='val',
+                                                shuffle=True,
+                                                drop_last=False,
+                                                )
 
     def detect(self):
         self.train_teacher()
@@ -96,18 +106,17 @@ class NAD(BackdoorDefense):
         for epoch in range(0, self.teacher_epochs):
 
             self.adjust_learning_rate(optimizer, epoch, self.lr)
+            # print("LR:", optimizer.param_groups[0]['lr'])
 
-            if epoch == 0:
-                # before training test firstly
-                # self.test(teacher, criterion, epoch)
-                test(teacher, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+            # if epoch == 0:
+            #     # before training test firstly
+            #     # self.test(teacher, criterion, epoch)
+            #     test(teacher, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
 
             self.train_step(self.train_loader, teacher, optimizer, criterion, epoch+1)
 
             # evaluate on testing set
-            # acc_clean, acc_bad = self.test(teacher, criterion, epoch+1)
-            # acc_clean, acc_bad = acc_clean[0], acc_bad[0]
-            acc_clean, acc_bad = test(teacher, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+            # acc_clean, acc_bad = test(teacher, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
 
             # remember best precision and save checkpoint
             # is_best = acc_clean[0] > self.threshold_clean
@@ -116,9 +125,13 @@ class NAD(BackdoorDefense):
             # best_clean_acc = acc_clean
             # best_bad_acc = acc_bad
             
-            t_model_path = os.path.join(self.folder_path, 'NAD_T_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
-            self.save_checkpoint(teacher.module.state_dict(), True, t_model_path)
-
+            # t_model_path = os.path.join(self.folder_path, 'NAD_T_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
+            # self.save_checkpoint(teacher.module.state_dict(), True, t_model_path)
+        
+        acc_clean, acc_bad = test(teacher, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+        t_model_path = os.path.join(self.folder_path, 'NAD_T_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
+        self.save_checkpoint(teacher.module.state_dict(), True, t_model_path)
+        
     def train_erase(self):
         """
         Erase the backdoor: teach the student (poisoned) model with the teacher model following NAD loss
@@ -168,27 +181,32 @@ class NAD(BackdoorDefense):
             # train every epoch
             criterions = {'criterionCls': criterionCls, 'criterionAT': criterionAT}
 
-            if epoch == 0:
-                # before training test firstly
-                # self.test_erase(nets, criterions, self.betas, epoch)
-                test(student, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+            # if epoch == 0:
+            #     # before training test firstly
+            #     # self.test_erase(nets, criterions, self.betas, epoch)
+            #     test(student, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
 
             self.train_step_erase(self.train_loader, nets, optimizer, criterions, self.betas, epoch+1)
 
             # evaluate on testing set
             # acc_clean, acc_bad = self.test_erase(nets, criterions, self.betas, epoch+1)
             # acc_clean, acc_bad = acc_clean[0], acc_bad[0]
-            acc_clean, acc_bad = test(student, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+            # acc_clean, acc_bad = test(student, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
 
-            # remember best precision and save checkpoint
-            is_best = acc_clean > self.threshold_clean
-            self.threshold_clean = min(acc_bad, self.threshold_clean)
+            # # remember best precision and save checkpoint
+            # is_best = acc_clean > self.threshold_clean
+            # self.threshold_clean = min(acc_bad, self.threshold_clean)
 
-            best_clean_acc = acc_clean
-            best_bad_acc = acc_bad
+            # best_clean_acc = acc_clean
+            # best_bad_acc = acc_bad
             
-            erase_model_path = os.path.join(self.folder_path, 'NAD_E_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
-            self.save_checkpoint(student.module.state_dict(), is_best, erase_model_path)
+            # erase_model_path = os.path.join(self.folder_path, 'NAD_E_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
+            # self.save_checkpoint(student.module.state_dict(), is_best, erase_model_path)
+        
+        test(student, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+        save_path = supervisor.get_model_dir(self.args, defense=True)
+        print(f"Saved to {save_path}")
+        self.save_checkpoint(student.module.state_dict(), True, save_path)
 
     def test(self, model, criterion, epoch):
         losses = AverageMeter()
@@ -324,10 +342,10 @@ class NAD(BackdoorDefense):
             loss.backward()
             optimizer.step()
 
-        print('Epoch[{0}]: '
-            'loss: {losses.avg:.4f}  '
-            'prec@1: {top1.avg:.2f}  '
-            'prec@5: {top5.avg:.2f}'.format(epoch, losses=losses, top1=top1, top5=top5))
+        # print('Epoch[{0}]: '
+        #     'loss: {losses.avg:.4f}  '
+        #     'prec@1: {top1.avg:.2f}  '
+        #     'prec@5: {top5.avg:.2f}'.format(epoch, losses=losses, top1=top1, top5=top5))
 
 
     def train_step_erase(self, train_loader, nets, optimizer, criterions, betas, epoch):
@@ -365,16 +383,16 @@ class NAD(BackdoorDefense):
             at_loss.backward()
             optimizer.step()
 
-        print('Epoch[{0}]: '
-            'AT_loss: {losses.avg:.4f}  '
-            'prec@1: {top1.avg:.2f}  '
-            'prec@5: {top5.avg:.2f}'.format(epoch, losses=at_losses, top1=top1, top5=top5))
+        # print('Epoch[{0}]: '
+        #     'AT_loss: {losses.avg:.4f}  '
+        #     'prec@1: {top1.avg:.2f}  '
+        #     'prec@5: {top5.avg:.2f}'.format(epoch, losses=at_losses, top1=top1, top5=top5))
 
     def adjust_learning_rate(self, optimizer, epoch, lr):
         # The learning rate is divided by 10 after every 2 epochs
-        lr = lr * math.pow(10, -math.floor(epoch / 2))
+        lr = lr * math.pow(0.2, math.floor(epoch / 2))
         
-        print('epoch: {}  lr: {:.4f}'.format(epoch, lr))
+        # print('epoch: {}  lr: {:.4f}'.format(epoch, lr))
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
@@ -384,21 +402,21 @@ class NAD(BackdoorDefense):
             lr = lr
         elif epoch < 20:
             # lr = 0.01
-            lr *= 0.1
+            lr *= 0.5
         elif epoch < 30:
             # lr = 0.0001
             lr *= 0.001
         else:
             # lr = 0.0001
             lr *= 0.001
-        print('epoch: {}  lr: {:.4f}'.format(epoch, lr))
+        # print('epoch: {}  lr: {:.4f}'.format(epoch, lr))
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
     def save_checkpoint(self, state, is_best, save_dir):
         if is_best:
             torch.save(state, save_dir)
-            print('[info] save best model')
+            # print('[info] save best model')
 
 '''
 AT with sum of absolute values with power p

@@ -55,20 +55,23 @@ class SEAM(BackdoorDefense):
 
         self.train_set = self.train_loader.dataset
         self.train_set_size = len(self.train_set)
-        forget_idx = random.sample(range(0, self.train_set_size), int(self.train_set_size * 0.001))
+        forget_idx = random.sample(range(0, self.train_set_size), int(self.train_set_size * 0.01))
         recovery_idx = random.sample(range(0, self.train_set_size), int(self.train_set_size * 0.1))
         self.forget_set = Subset(self.train_set, forget_idx)
-        self.forget_loader = DataLoader(self.forget_set, batch_size=100, shuffle=True)
+        self.forget_loader = DataLoader(self.forget_set, batch_size=32, shuffle=True)
         self.recovery_set = Subset(self.train_set, recovery_idx)
-        self.recovery_loader = DataLoader(self.recovery_set, batch_size=100, shuffle=True)
+        self.recovery_loader = DataLoader(self.recovery_set, batch_size=32, shuffle=True)
         self.criterion = torch.nn.CrossEntropyLoss().cuda()
 
     def detect(self):
-        optimizer = torch.optim.SGD(self.model.module.parameters(),
-                                    lr=0.05,
-                                    momentum=0.9,
-                                    weight_decay=1e-4,
-                                    nesterov=True)
+        # optimizer = torch.optim.SGD(self.model.module.parameters(),
+        #                             lr=0.5,
+        #                             momentum=0.9,
+        #                             weight_decay=1e-4,
+        #                             nesterov=True)
+        
+        optimizer = torch.optim.Adam(self.model.module.parameters(), lr=0.001)
+                                    
         # forget set training
         for epoch in range(self.epoch_for):
             self.model.train()
@@ -85,8 +88,16 @@ class SEAM(BackdoorDefense):
 
             self.model.eval()
             acc = test(self.model, self.forget_loader)
+            test(self.model, self.test_loader, poison_test=True, poison_transform=self.poison_transform)
             if acc[0] < self.acc_for:
                 break
+            
+        optimizer = torch.optim.Adam(self.model.module.parameters(), lr=0.001)
+        # optimizer = torch.optim.SGD(self.model.module.parameters(),
+        #                             lr=0.05,
+        #                             momentum=0.9,
+        #                             weight_decay=1e-4,
+        #                             nesterov=True)
 
         print("Finish the forget process. Now start the recovery process.\n")
         # recovery set training
@@ -104,6 +115,7 @@ class SEAM(BackdoorDefense):
 
             self.model.eval()
             acc = test(self.model, self.recovery_loader)
+            test(self.model, self.test_loader, poison_test=True, poison_transform=self.poison_transform)
             if acc[0] > self.acc_rec:
                 break
 

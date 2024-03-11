@@ -504,7 +504,7 @@ class ABL(BackdoorDefense):
                 'optimizer': optimizer.state_dict(),
             }, self.finetuning_epochs, True, phase='finetuning')
         elif os.path.exists(os.path.join(self.folder_path, 'abl_%s_finetuning_epoch=%d_seed=%d.tar' % (supervisor.get_dir_core(self.args), self.finetuning_epochs, self.args.seed))):
-            self.load_checkpoint(model=model_ascent,
+            self.load_checkpoint(model=model_ascent.module,
                                 filepath=os.path.join(self.folder_path, 'abl_%s_finetuning_epoch=%d_seed=%d.tar' % (supervisor.get_dir_core(self.args), self.finetuning_epochs, self.args.seed)))
             print('Loaded ascent model (finetuning)!')
             
