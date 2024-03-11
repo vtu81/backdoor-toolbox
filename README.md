@@ -67,6 +67,7 @@ See [other_defenses_tool_box/](other_defenses_tool_box/) and [other_defense.py](
 - `ANP`: Adversarial Neuron Pruning, https://arxiv.org/abs/2110.14430
 - `ABL`: Anti-Backdoor Learning, https://arxiv.org/abs/2110.11571
 - `AWM`: Adversarial Weight Masking, https://openreview.net/forum?id=Yb3dRKY170h
+- `BaDExpert`: BaDExpert, https://openreview.net/forum?id=s56xikpD92
 - `CD`: Cognitive Distillation, https://arxiv.org/pdf/2301.10908.pdf
 - `FeatureRE`: FeatureRE, https://arxiv.org/abs/2210.15127
 - `FP`: Fine-Pruning, http://arxiv.org/abs/1805.12185

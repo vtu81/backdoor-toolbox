@@ -130,9 +130,9 @@ elif args.defense == 'ABL':
             gamma=0.01,
             flooding=0.3,
             do_isolate=True,
-            finetuning_ascent_model=True,
+            finetuning_ascent_model=False,
             finetuning_epochs=60,
-            unlearning_epochs=5,
+            unlearning_epochs=10,
             lr_unlearning=2e-2,
             do_unlearn=True,
         )
@@ -237,7 +237,7 @@ elif args.defense == 'AWM':
 elif args.defense == 'RNP':
     from other_defenses_tool_box.RNP import RNP
     if args.dataset == 'cifar10':
-        defense = RNP(args, schedule=[10, 20], batch_size=128, momentum=0.9, weight_decay=5e-4, alpha=0.2, clean_threshold=0.20, unlearning_lr=0.01, recovering_lr=0.2, unlearning_epochs=20, recovering_epochs=20, pruning_by='threshold', pruning_max=0.90, pruning_step=0.05, max_CA_drop=0.1)
+        defense = RNP(args, schedule=[10, 20], batch_size=128, momentum=0.9, weight_decay=5e-4, alpha=0.2, clean_threshold=0.20, unlearning_lr=0.01, recovering_lr=0.2, unlearning_epochs=20, recovering_epochs=20, pruning_by='number', pruning_max=0.90, pruning_step=0.01, max_CA_drop=0.5)
     else: raise NotImplementedError()
     defense.detect()
 elif args.defense == "FeatureRE":
@@ -247,6 +247,10 @@ elif args.defense == "FeatureRE":
 elif args.defense == "CD":
     from other_defenses_tool_box.CD import CognitiveDistillation
     defense = CognitiveDistillation(args)
+    defense.detect()
+elif args.defense == "BaDExpert":
+    from other_defenses_tool_box.bad_expert import BaDExpert
+    defense = BaDExpert(args, defense_fpr=None)
     defense.detect()
 else:
     raise NotImplementedError()
