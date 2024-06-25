@@ -234,7 +234,6 @@ class IBD_PSC(BackdoorDefense):
                 poison_source_mask = []
                 poison_attack_success_mask = []
                 
-                # 找出攻击成功，且不是target label的下标
                 for batch_idx, batch in enumerate(tqdm(self.test_loader)):
                     data = batch[0]
                     label = batch[1]

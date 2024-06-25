@@ -73,7 +73,6 @@ def generate_dataloader(dataset='cifar10', dataset_path='./data/', batch_size=12
             test_data_loader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=4, pin_memory=True)
             return test_data_loader
         elif split == 'valid' or split == 'val':
-            # val_set_dir = os.path.join('clean_set', 'cifar10', 'clean_split')
             val_set_dir = os.path.join('clean_set', 'cifar10', 'clean_split')
             val_set_img_dir = os.path.join(val_set_dir, 'data')
             val_set_label_path = os.path.join(val_set_dir, 'clean_labels')
