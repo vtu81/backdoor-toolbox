@@ -4,34 +4,21 @@ import os
 import pdb
 import torch
 import config
-from torchvision import transforms
+import torchvision
+from sklearn import metrics
+from tqdm import tqdm
+import copy
+import numpy as np
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
+from collections import Counter
+import torch.nn as nn
+import numpy as np
+
 from other_defenses_tool_box.backdoor_defense import BackdoorDefense
 from other_defenses_tool_box.tools import generate_dataloader
 from utils.supervisor import get_transforms
 from utils import supervisor, tools
-from sklearn import metrics
-import pandas as pd
-import seaborn as sns
-from tqdm import tqdm
-from torch.cuda.amp import autocast, GradScaler
-import copy
-import numpy as np
-from scipy.stats import norm
-import torch.nn.functional as F
-import umap
-from PIL import Image
-import torchvision
-import matplotlib.pyplot as plt
-from collections import Counter
-from torch.utils.data import Subset
-from torchvision.datasets import ImageFolder
-import torch.nn as nn
-from sklearn.metrics.pairwise import cosine_similarity, paired_distances
-import umap
-import matplotlib.pyplot as plt
-import numpy as np
-import time
-from collections import Counter
 
 '''
 python other_defense.py -poison_type=WaNet  -poison_type badnet -poison_rate=0.1 -cover_rate=0.2  -no_normalize -dataset=cifar10 -defense=ScaleBN
