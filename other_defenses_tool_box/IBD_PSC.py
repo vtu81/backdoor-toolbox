@@ -21,55 +21,20 @@ from utils.supervisor import get_transforms
 from utils import supervisor, tools
 
 '''
-python other_defense.py -poison_type=WaNet  -poison_type badnet -poison_rate=0.1 -cover_rate=0.2  -no_normalize -dataset=cifar10 -defense=ScaleBN
+python other_defense.py -dataset cifar10 -poison_type badnet -poison_rate 0.1 -defense IBD_PSC
 '''
-
-class BatchNorm2d_ent(nn.BatchNorm2d):
-        def __init__(self, num_features):
-            super(BatchNorm2d_ent, self).__init__(num_features)
-        def forward(self, x):
-            return 1.5 * super(BatchNorm2d_ent, self).forward(x)
-        
-def replace_bn_with_ent_no_bn(model, layers):
-    bdcopym = copy.deepcopy(model)
-    index = -1
-    for name, module in bdcopym.named_children():
-        # Check if the module is an instance of BatchNorm2d
-        if isinstance(module, nn.BatchNorm2d):
-            index += 1
-            if index in layers:
-                # Create a new instance of your custom BN layer
-                new_bn = BatchNorm2d_ent(module.num_features)
-                
-                # Copy the parameters from the original BN layer to the new one
-                new_bn.running_mean = module.running_mean.clone()
-                new_bn.running_var = module.running_var.clone()
-                new_bn.weight = nn.Parameter(module.weight.clone())
-                new_bn.bias = nn.Parameter(module.bias.clone())
-                
-                # Replace the original BN layer with the new one
-                setattr(bdcopym, name, new_bn)
-    return bdcopym
-        # else:
-        #     # Recursively apply the same operation to child modules
-        #     replace_bn_with_ent(module)
-
 
 
 class IBD_PSC(BackdoorDefense):
     """Identify and filter malicious testing samples (IBD-PSC).
 
     Args:
-        model (nn.Module): The original backdoored model.
         n (int): The hyper-parameter for the number of parameter-amplified versions of the original backdoored model by scaling up of its different BN layers.
         xi (float): The hyper-parameter for the error rate.
         T (float):  The hyper-parameter for defender-specified threshold T. If PSC(x) > T , we deem it as a backdoor sample.
         scale (float): The hyper-parameter for amplyfying the parameters of selected BN layers.
-        seed (int): Global seed for random numbers. Default: 0.
-        deterministic (bool): Sets whether PyTorch operations must use "deterministic" algorithms.
-
-        
     """
+    
     name: str = 'IBD_PSC'
     def __init__(self, args, n=5, xi=0.6, T = 0.9, scale=1.5):
         super().__init__(args)
