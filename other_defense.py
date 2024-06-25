@@ -186,6 +186,12 @@ elif args.defense == 'ScaleUp':
     from other_defenses_tool_box.scale_up import ScaleUp
     defense = ScaleUp(args, with_clean_data=False)
     defense.detect(noisy_test=args.noisy_test)
+elif  args.defense == 'IBD_PSC':
+    from other_defenses_tool_box.IBD_PSC import IBD_PSC
+    defense = IBD_PSC(args)
+    # defense.detect()
+    defense.test()
+
 elif args.defense == "SEAM":
     from other_defenses_tool_box.SEAM import SEAM
     defense = SEAM(args)
