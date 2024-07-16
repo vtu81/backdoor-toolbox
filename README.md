@@ -139,11 +139,9 @@ python cleanser.py -cleanser=$CLEANSER -dataset=cifar10 -poison_type=adaptive_bl
 python train_on_cleansed_set.py -cleanser=$CLEANSER -dataset=cifar10 -poison_type=adaptive_blend -poison_rate=0.003 -cover_rate=0.003 -alpha 0.15 -test_alpha 0.2
 
 # Other defenses
-## $DEFENSE = ['ABL', 'NC', 'NAD', 'STRIP', 'FP', 'SentiNet', etc.]
+## $DEFENSE = ['ABL', 'NC', 'NAD', 'STRIP', 'FP', 'SentiNet', 'IBD_PSC', etc.]
 ## Except for 'ABL', you need to train poisoned backdoor models first.
 python other_defense.py -defense=$DEFENSE -dataset=cifar10 -poison_type=adaptive_blend -poison_rate=0.003 -cover_rate=0.003 -alpha 0.15 -test_alpha 0.2
-
-python other_defense.py -dataset cifar10 -poison_type badnet -poison_rate 0.1 -defense IBD_PSC
 ```
 
 <!-- **Notice**:
