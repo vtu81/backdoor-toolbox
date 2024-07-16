@@ -83,6 +83,7 @@ See [other_defenses_tool_box/](other_defenses_tool_box/) and [other_defense.py](
 - `SentiNet`: https://ieeexplore.ieee.org/abstract/document/9283822
 - `STRIP` (backdoor input filter): http://arxiv.org/abs/1902.06531
 - `SFT`: Super-Fine-Tuning, https://arxiv.org/abs/2212.09067
+- `IBD-PSC` (Input-level Backdoor Detection): https://arxiv.org/abs/2405.09786
 - ... (others to be incorporated)
 
 ### Visualization
@@ -141,6 +142,8 @@ python train_on_cleansed_set.py -cleanser=$CLEANSER -dataset=cifar10 -poison_typ
 ## $DEFENSE = ['ABL', 'NC', 'NAD', 'STRIP', 'FP', 'SentiNet', etc.]
 ## Except for 'ABL', you need to train poisoned backdoor models first.
 python other_defense.py -defense=$DEFENSE -dataset=cifar10 -poison_type=adaptive_blend -poison_rate=0.003 -cover_rate=0.003 -alpha 0.15 -test_alpha 0.2
+
+python other_defense.py -dataset cifar10 -poison_type badnet -poison_rate 0.1 -defense IBD_PSC
 ```
 
 <!-- **Notice**:
