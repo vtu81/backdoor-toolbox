@@ -11,7 +11,7 @@ parser_choices = {
     'poison_rate': [i / 1000.0 for i in range(0, 500)],
     'cover_rate': [i / 1000.0 for i in range(0, 500)],
     'cleanser': ['SCAn', 'AC', 'SS', 'Strip', 'CT', 'SPECTRE', 'SentiNet', 'Frequency'],
-    'defense': ['ABL', 'NC', 'STRIP', 'FP', 'NAD', 'SentiNet', 'ScaleUp', 'SEAM', 'SFT', 'NONE', 'Frequency', 'AC', 'moth', 'IBAU', 'ANP', 'FeatureRE', 'AWM', 'RNP', 'CD', 'BaDExpert', 'IBD_PSC'],
+    'defense': ['BTIDBFU','ABL', 'NC', 'STRIP', 'FP', 'NAD', 'SentiNet', 'ScaleUp', 'SEAM', 'SFT', 'NONE', 'Frequency', 'AC', 'moth', 'IBAU', 'ANP', 'FeatureRE', 'AWM', 'RNP', 'CD', 'BaDExpert', 'IBD_PSC'],
 }
 
 parser_default = {
