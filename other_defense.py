@@ -191,6 +191,11 @@ elif  args.defense == 'IBD_PSC':
     defense = IBD_PSC(args)
     # defense.detect()
     defense.test()
+    
+elif  args.defense == 'FLARE':
+    from other_defenses_tool_box.FLARE import FLARE
+    defense = FLARE(args)
+    defense.detect()
 
 elif args.defense == "SEAM":
     from other_defenses_tool_box.SEAM import SEAM

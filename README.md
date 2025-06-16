@@ -84,6 +84,7 @@ See [other_defenses_tool_box/](other_defenses_tool_box/) and [other_defense.py](
 - `STRIP` (backdoor input filter): http://arxiv.org/abs/1902.06531
 - `SFT`: Super-Fine-Tuning, https://arxiv.org/abs/2212.09067
 - `IBD-PSC` (Input-level Backdoor Detection): https://arxiv.org/abs/2405.09786
+- `FLARE` Universal Dataset Purification against Backdoor Attacks: https://arxiv.org/abs/2411.19479
 - ... (others to be incorporated)
 
 ### Visualization
